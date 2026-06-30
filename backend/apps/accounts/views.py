@@ -141,6 +141,24 @@ class LogoutView(APIView):
         return Response(status=status.HTTP_205_RESET_CONTENT)
 
 
+class BangladeshGeoView(APIView):
+    """GET /api/auth/bd-geo/ — Bangladesh division → district → upazila list.
+
+    Public so unauthenticated checkout pages can also prefill the same
+    dropdowns if we ever wire that up. The payload is a small static
+    structure (8 divisions, 64 districts, ~495 upazilas) so we just hand
+    it back as-is.
+    """
+
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = ()  # Don't 401 anonymous callers.
+
+    def get(self, request):
+        from .bd_geo import BD_DIVISIONS
+
+        return Response({"divisions": BD_DIVISIONS})
+
+
 class MeView(generics.RetrieveUpdateAPIView):
     """GET/PUT/PATCH /api/auth/me/ — Current user profile."""
 

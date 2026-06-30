@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { useUIStore } from "../stores/uiStore";
+import api from "../api/client";
 import Icon from "../components/Icon";
 
 const TIER_BADGE = {
@@ -17,8 +18,17 @@ export default function ProfilePage() {
   const notify = useUIStore((s) => s.notify);
   const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Bangladesh admin-area cascading data: Division → District → Upazila.
+  // Fetched once on mount; harmless to re-fetch if it fails.
+  const [divisions, setDivisions] = useState([]);
 
   useEffect(() => { fetchMe(); }, [fetchMe]);
+
+  useEffect(() => {
+    api.get("/auth/bd-geo/")
+      .then((r) => setDivisions(r.data?.divisions || []))
+      .catch(() => setDivisions([]));
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -30,12 +40,48 @@ export default function ProfilePage() {
         address_line1: user.profile?.address_line1 || "",
         city: user.profile?.city || "",
         state: user.profile?.state || "",
+        division: user.profile?.division || "",
+        district: user.profile?.district || "",
+        upazila: user.profile?.upazila || "",
         postal_code: user.profile?.postal_code || "",
         country: user.profile?.country || "Bangladesh",
         membership_tier: user.profile?.membership_tier || "Standard",
       });
     }
   }, [user]);
+
+  // Derive the available districts and upazilas from the picked division /
+  // district. We tolerate stale values (e.g. a user whose saved district
+  // isn't in the new division) by leaving the options empty and forcing a
+  // re-pick — the form's validation will re-enable the dependent dropdowns.
+  const districtsForDivision = useMemo(() => {
+    if (!form?.division) return [];
+    return divisions.find((d) => d.name === form.division)?.districts || [];
+  }, [divisions, form?.division]);
+
+  const upazilasForDistrict = useMemo(() => {
+    if (!form?.district) return [];
+    return districtsForDivision.find((d) => d.name === form.district)?.upazilas || [];
+  }, [districtsForDivision, form?.district]);
+
+  // Reset dependent selections when the parent changes — saves the user
+  // from saving an inconsistent (division, district, upazila) tuple.
+  const onDivisionChange = (e) => {
+    const v = e.target.value;
+    setForm((f) => ({
+      ...f,
+      division: v,
+      district: "",
+      upazila: "",
+    }));
+  };
+  const onDistrictChange = (e) => {
+    const v = e.target.value;
+    setForm((f) => ({ ...f, district: v, upazila: "" }));
+  };
+  const onUpazilaChange = (e) => {
+    setForm((f) => ({ ...f, upazila: e.target.value }));
+  };
 
   const update = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
@@ -83,7 +129,7 @@ export default function ProfilePage() {
           </div>
           <dl className="mt-5 space-y-3 text-body-md">
             <Row label="Email" value={user.email} icon="email" />
-            <Row label="Member since" value={new Date(user.date_joined).toLocaleDateString()} icon="event" />
+            <Row label="Member since" value={formatJoinDate(user.joined_at || user.date_joined)} icon="event" />
             <div className="flex items-center justify-between">
               <span className="text-ink-muted">Tier</span>
               <span className={`chip ${TIER_BADGE[tierKey(form.membership_tier)] || "chip-neutral"} capitalize`}>
@@ -93,12 +139,10 @@ export default function ProfilePage() {
             {form.phone_number ? (
               <Row label="Phone" value={form.phone_number} icon="phone" />
             ) : null}
-            {form.address_line1 ? (
+            {hasAddress(form) ? (
               <Row
                 label="Address"
-                value={[form.address_line1, form.city, form.state, form.postal_code, form.country]
-                  .filter(Boolean)
-                  .join(", ")}
+                value={formatAddressSummary(form)}
                 icon="home"
               />
             ) : null}
@@ -130,19 +174,79 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-6 gap-4">
             <div className="sm:col-span-6">
               <label className="label">Address line 1</label>
-              <input className="input" value={form.address_line1} onChange={update("address_line1")} />
+              <input
+                className="input"
+                value={form.address_line1}
+                onChange={update("address_line1")}
+                placeholder="House / road / area"
+              />
+            </div>
+
+            {/* Bangladesh: Division → District → Upazila. Country is fixed
+                to "Bangladesh" for this form since that's the only dataset
+                we currently ship — a future international form can branch
+                off this. */}
+            <div className="sm:col-span-2">
+              <label className="label">Division</label>
+              <select
+                className="input"
+                value={form.division}
+                onChange={onDivisionChange}
+              >
+                <option value="">Select division</option>
+                {divisions.map((d) => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="label">District</label>
+              <select
+                className="input"
+                value={form.district}
+                onChange={onDistrictChange}
+                disabled={!form.division || districtsForDivision.length === 0}
+              >
+                <option value="">{form.division ? "Select district" : "Pick a division first"}</option>
+                {districtsForDivision.map((d) => (
+                  <option key={d.name} value={d.name}>{d.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="label">Upazila</label>
+              <select
+                className="input"
+                value={form.upazila}
+                onChange={onUpazilaChange}
+                disabled={!form.district || upazilasForDistrict.length === 0}
+              >
+                <option value="">{form.district ? "Select upazila" : "Pick a district first"}</option>
+                {upazilasForDistrict.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-3">
+              <label className="label">Area / village (optional)</label>
+              <input
+                className="input"
+                value={form.city}
+                onChange={update("city")}
+                placeholder="e.g. Bashundhara R/A, Mohammadpur"
+              />
             </div>
             <div className="sm:col-span-3">
-              <label className="label">City</label>
-              <input className="input" value={form.city} onChange={update("city")} />
-            </div>
-            <div className="sm:col-span-1">
-              <label className="label">State</label>
-              <input className="input" value={form.state} onChange={update("state")} />
-            </div>
-            <div className="sm:col-span-2">
               <label className="label">Postal code</label>
-              <input className="input" value={form.postal_code} onChange={update("postal_code")} />
+              <input
+                className="input"
+                value={form.postal_code}
+                onChange={update("postal_code")}
+                placeholder="1212"
+              />
             </div>
           </div>
 
@@ -156,6 +260,44 @@ export default function ProfilePage() {
       </div>
     </div>
   );
+}
+
+// `hasAddress` is true when *any* of the address fields are populated —
+// used to hide the summary row in the side card when there's nothing to
+// show, instead of printing an awkward trailing comma.
+function hasAddress(f) {
+  return Boolean(
+    f.address_line1 || f.city || f.state || f.division ||
+    f.district || f.upazila || f.postal_code || f.country
+  );
+}
+
+// Render the "Member since" date from the backend's `joined_at` (or
+// `date_joined` fallback) without ever printing "Invalid Date". Returns
+// `—` if both fields are missing or the string is unparseable.
+function formatJoinDate(raw) {
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString();
+}
+
+// Compose a single-line summary for the side card. Order: street, area,
+// upazila, district, division, postal, country — matches how Bangladeshi
+// addresses are usually written top-down.
+function formatAddressSummary(f) {
+  return [
+    f.address_line1,
+    f.city,
+    f.upazila,
+    f.district,
+    f.division,
+    f.postal_code,
+    f.country,
+  ]
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 function Row({ label, value, icon }) {

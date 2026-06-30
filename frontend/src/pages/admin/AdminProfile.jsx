@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../../stores/authStore";
+import api from "../../api/client";
 import Icon from "../../components/Icon";
 import Spinner from "../../components/Spinner";
 
@@ -11,10 +12,17 @@ export default function AdminProfile() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [toast, setToast] = useState(null);
+  const [divisions, setDivisions] = useState([]);
 
   useEffect(() => {
     if (!user) fetchMe();
   }, [user, fetchMe]);
+
+  useEffect(() => {
+    api.get("/auth/bd-geo/")
+      .then((r) => setDivisions(r.data?.divisions || []))
+      .catch(() => setDivisions([]));
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -26,11 +34,33 @@ export default function AdminProfile() {
         address_line1: user.profile?.address_line1 || "",
         city: user.profile?.city || "",
         state: user.profile?.state || "",
+        division: user.profile?.division || "",
+        district: user.profile?.district || "",
+        upazila: user.profile?.upazila || "",
         postal_code: user.profile?.postal_code || "",
         country: user.profile?.country || "Bangladesh",
       });
     }
   }, [user]);
+
+  // Derive district / upazila options for the cascading admin-area
+  // dropdowns. Same shape as ProfilePage so users see consistent data.
+  const districtsForDivision = useMemo(() => {
+    if (!form?.division) return [];
+    return divisions.find((d) => d.name === form.division)?.districts || [];
+  }, [divisions, form?.division]);
+
+  const upazilasForDistrict = useMemo(() => {
+    if (!form?.district) return [];
+    return districtsForDivision.find((d) => d.name === form.district)?.upazilas || [];
+  }, [districtsForDivision, form?.district]);
+
+  const onDivisionChange = (e) =>
+    setForm((f) => ({ ...f, division: e.target.value, district: "", upazila: "" }));
+  const onDistrictChange = (e) =>
+    setForm((f) => ({ ...f, district: e.target.value, upazila: "" }));
+  const onUpazilaChange = (e) =>
+    setForm((f) => ({ ...f, upazila: e.target.value }));
 
   const showToast = (msg, kind = "success") => {
     setToast({ msg, kind });
@@ -132,22 +162,16 @@ export default function AdminProfile() {
             />
             <Row
               label="Member since"
-              value={
-                user.date_joined
-                  ? new Date(user.date_joined).toLocaleDateString()
-                  : "—"
-              }
+              value={formatJoinDate(user.joined_at || user.date_joined)}
               icon="event"
             />
             {form.phone_number ? (
               <Row label="Phone" value={form.phone_number} icon="phone" />
             ) : null}
-            {form.address_line1 ? (
+            {hasAddress(form) ? (
               <Row
                 label="Address"
-                value={[form.address_line1, form.city, form.state, form.postal_code, form.country]
-                  .filter(Boolean)
-                  .join(", ")}
+                value={formatAddressSummary(form)}
                 icon="home"
               />
             ) : null}
@@ -209,33 +233,75 @@ export default function AdminProfile() {
                   className="input w-full"
                   value={form.address_line1}
                   onChange={update("address_line1")}
+                  placeholder="House / road / area"
                   disabled={savingProfile}
                 />
               </div>
+
+              {/* Bangladesh admin areas: Division → District → Upazila, as
+                  cascading selects. Country is fixed to Bangladesh here. */}
+              <div className="sm:col-span-2">
+                <label className="text-label-md text-ink block mb-2">Division</label>
+                <select
+                  className="input w-full"
+                  value={form.division}
+                  onChange={onDivisionChange}
+                  disabled={savingProfile}
+                >
+                  <option value="">Select division</option>
+                  {divisions.map((d) => (
+                    <option key={d.name} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-label-md text-ink block mb-2">District</label>
+                <select
+                  className="input w-full"
+                  value={form.district}
+                  onChange={onDistrictChange}
+                  disabled={savingProfile || !form.division || districtsForDivision.length === 0}
+                >
+                  <option value="">{form.division ? "Select district" : "Pick a division first"}</option>
+                  {districtsForDivision.map((d) => (
+                    <option key={d.name} value={d.name}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="text-label-md text-ink block mb-2">Upazila</label>
+                <select
+                  className="input w-full"
+                  value={form.upazila}
+                  onChange={onUpazilaChange}
+                  disabled={savingProfile || !form.district || upazilasForDistrict.length === 0}
+                >
+                  <option value="">{form.district ? "Select upazila" : "Pick a district first"}</option>
+                  {upazilasForDistrict.map((u) => (
+                    <option key={u} value={u}>{u}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="sm:col-span-3">
-                <label className="text-label-md text-ink block mb-2">City</label>
+                <label className="text-label-md text-ink block mb-2">Area / village (optional)</label>
                 <input
                   className="input w-full"
                   value={form.city}
                   onChange={update("city")}
+                  placeholder="e.g. Bashundhara R/A, Mohammadpur"
                   disabled={savingProfile}
                 />
               </div>
-              <div className="sm:col-span-1">
-                <label className="text-label-md text-ink block mb-2">State</label>
-                <input
-                  className="input w-full"
-                  value={form.state}
-                  onChange={update("state")}
-                  disabled={savingProfile}
-                />
-              </div>
-              <div className="sm:col-span-2">
+              <div className="sm:col-span-3">
                 <label className="text-label-md text-ink block mb-2">Postal code</label>
                 <input
                   className="input w-full"
                   value={form.postal_code}
                   onChange={update("postal_code")}
+                  placeholder="1212"
                   disabled={savingProfile}
                 />
               </div>
@@ -340,4 +406,34 @@ function Row({ label, value, icon }) {
       <span className="text-ink font-medium text-right truncate">{value}</span>
     </div>
   );
+}
+
+function hasAddress(f) {
+  return Boolean(
+    f.address_line1 || f.city || f.state || f.division ||
+    f.district || f.upazila || f.postal_code || f.country
+  );
+}
+
+function formatJoinDate(raw) {
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString();
+}
+
+function formatAddressSummary(f) {
+  return [
+    f.address_line1,
+    f.city,
+    f.upazila,
+    f.district,
+    f.division,
+    f.postal_code,
+    f.country,
+  ]
+    .map((s) => (s || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
 }

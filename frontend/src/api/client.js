@@ -80,4 +80,18 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// The Django backend returns media URLs (e.g. `/media/brands/apple.svg`)
+// as relative paths. Browsers would resolve them against the page origin
+// (Vite dev server / static frontend host), which usually doesn't serve
+// Django's media files. Re-base those paths onto the API origin so they
+// always hit Django's `/media/` route during development and the same
+// host in production behind a single reverse proxy.
+export function absoluteMediaUrl(path) {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  // Strip `/api` (or whatever path prefix the API uses) to get the host origin.
+  const origin = BASE_URL.replace(/\/api\/?$/, "");
+  return `${origin}${path.startsWith("/") ? "" : "/"}${path}`;
+}
 export { BASE_URL };

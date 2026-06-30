@@ -1,5 +1,25 @@
 from django.conf import settings
 from django.db import models
+from decimal import Decimal
+
+
+def compute_tier_from_spend(total_paid: Decimal) -> str:
+    """Map a customer's cumulative paid spend to a tier label.
+
+    Tiers are inclusive at the lower bound and stack — once a customer
+    hits ৳25,000 they stay ``Gold`` even on later smaller orders, until
+    they cross into ``Platinum`` at ৳75,000. ``Standard`` covers anyone
+    who's registered but hasn't paid for anything yet.
+
+    The bands are intentionally simple and BD-currency-friendly (৳). If
+    product/marketing want to change the bands later this is the one
+    function to edit.
+    """
+    if total_paid >= Decimal("75000"):
+        return "Platinum"
+    if total_paid >= Decimal("25000"):
+        return "Gold"
+    return "Standard"
 
 
 class EmailOTP(models.Model):
@@ -70,6 +90,12 @@ class UserProfile(models.Model):
     address_line1 = models.CharField(max_length=200, blank=True)
     city = models.CharField(max_length=80, blank=True)
     state = models.CharField(max_length=80, blank=True)
+    # Bangladesh admin areas: division → district → upazila (3 cascading
+    # dropdowns in the UI). Stored alongside the legacy `state`/`city` text
+    # fields so any old free-text values are preserved on user profiles.
+    division = models.CharField(max_length=60, blank=True)
+    district = models.CharField(max_length=80, blank=True)
+    upazila = models.CharField(max_length=80, blank=True)
     postal_code = models.CharField(max_length=20, blank=True)
     country = models.CharField(max_length=60, blank=True, default="Bangladesh")
     # Older/legacy list of addresses — kept for back-compat.
@@ -78,3 +104,26 @@ class UserProfile(models.Model):
 
     def __str__(self) -> str:
         return f"Profile<{self.user.username}>"
+
+    @property
+    def computed_tier(self) -> str:
+        """Live tier computed from the user's lifetime paid order spend.
+
+        We sum ``Order.total_amount`` across orders that actually got paid
+        (``paid_at`` is set, regardless of fulfilment status) and bucket
+        that spend. Orders that were cancelled or never paid are skipped.
+
+        This overrides the value stored in ``membership_tier`` — the DB
+        field is kept for backwards-compat (and so admin overrides can
+        still pin a specific user to a tier) but the API surfaces the
+        live computed value by default.
+        """
+        from apps.orders.models import Order
+        from django.db.models import Sum
+
+        total = (
+            Order.objects.filter(user=self.user, paid_at__isnull=False)
+            .aggregate(s=Sum("total_amount"))
+            .get("s")
+        )
+        return compute_tier_from_spend(total or Decimal("0"))

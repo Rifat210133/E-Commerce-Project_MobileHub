@@ -9,6 +9,12 @@ User = get_user_model()
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    # Surface the *live* computed tier instead of the stored column so the
+    # frontend doesn't have to re-derive it from orders. The DB field
+    # `membership_tier` is still writable via UpdateProfileSerializer so
+    # admins can pin specific customers to a tier.
+    membership_tier = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = (
@@ -18,6 +24,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "address_line1",
             "city",
             "state",
+            "division",
+            "district",
+            "upazila",
             "postal_code",
             "country",
             "address_book",
@@ -25,10 +34,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("created_at",)
 
+    def get_membership_tier(self, obj: UserProfile) -> str:
+        return obj.computed_tier
+
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
     is_admin = serializers.SerializerMethodField()
+    # `date_joined` is when the auth row was created. We expose it as
+    # `joined_at` so the frontend can show a stable "Member since" date
+    # without us having to overwrite Django's internal timestamp.
+    joined_at = serializers.DateTimeField(source="date_joined", read_only=True)
 
     class Meta:
         model = User
@@ -39,6 +55,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "is_admin",
+            "joined_at",
             "profile",
         )
 
@@ -180,6 +197,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
     address_line1 = serializers.CharField(required=False, allow_blank=True, max_length=200)
     city = serializers.CharField(required=False, allow_blank=True, max_length=80)
     state = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    division = serializers.CharField(required=False, allow_blank=True, max_length=60)
+    district = serializers.CharField(required=False, allow_blank=True, max_length=80)
+    upazila = serializers.CharField(required=False, allow_blank=True, max_length=80)
     postal_code = serializers.CharField(required=False, allow_blank=True, max_length=20)
     country = serializers.CharField(required=False, allow_blank=True, max_length=60)
     membership_tier = serializers.ChoiceField(
@@ -196,6 +216,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "address_line1",
             "city",
             "state",
+            "division",
+            "district",
+            "upazila",
             "postal_code",
             "country",
             "membership_tier",
@@ -212,6 +235,9 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
         "address_line1",
         "city",
         "state",
+        "division",
+        "district",
+        "upazila",
         "postal_code",
         "country",
         "membership_tier",

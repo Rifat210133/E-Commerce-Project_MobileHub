@@ -188,24 +188,45 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center py-12 px-4">
+    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary-50 via-surface-alt to-primary-50">
       <div className="w-full max-w-lg">
-        <div className="text-center mb-8">
-          <div className="w-14 h-14 mx-auto rounded-xl bg-primary text-white flex items-center justify-center mb-4">
-            <Icon name={step === 1 ? "person_add" : "mark_email_read"} size={28} />
+        {/* Brand hero — gradient header in the project's primary blue. */}
+        <div className="relative overflow-hidden rounded-2xl mb-6 px-6 py-8 text-center text-white bg-gradient-to-br from-primary to-primary-700 shadow-elevated">
+          <div className="pointer-events-none absolute -top-12 -right-12 w-40 h-40 rounded-full bg-primary-400/30 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-16 -left-12 w-48 h-48 rounded-full bg-accent-gold/15 blur-2xl" />
+          <div className="relative">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-white/15 backdrop-blur ring-1 ring-white/20 flex items-center justify-center mb-4">
+              <Icon name={step === 1 ? "person_add" : "mark_email_read"} size={30} />
+            </div>
+            <h1 className="text-headline-md text-white">
+              {step === 1 ? "Create your account" : "Verify your email"}
+            </h1>
+            <p className="text-body-md text-primary-100 mt-1">
+              {step === 1
+                ? "Join MobileHub for faster checkout and exclusive deals"
+                : `We sent a 6-digit code to ${form.email}. Enter it below to finish creating your account.`}
+            </p>
+
+            {/* Step indicator — only visible on step 2; doubles as quiet visual
+                cue that we've moved into the verification phase. */}
+            {step === 2 && (
+              <div className="mt-5 flex items-center justify-center gap-2 text-label-sm text-primary-100">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 ring-1 ring-white/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent-gold" />
+                  Code sent
+                </span>
+                <span className="opacity-60">•</span>
+                <span className="opacity-80">Expires in 10 minutes</span>
+              </div>
+            )}
           </div>
-          <h1 className="text-headline-md text-ink">
-            {step === 1 ? "Create your account" : "Verify your email"}
-          </h1>
-          <p className="text-body-md text-ink-muted mt-1">
-            {step === 1
-              ? "Join MobileHub for faster checkout and exclusive deals"
-              : `We sent a 6-digit code to ${form.email}. Enter it below to finish creating your account.`}
-          </p>
         </div>
 
         {step === 1 ? (
-          <form onSubmit={sendCode} className="card p-6 space-y-4">
+          <form
+            onSubmit={sendCode}
+            className="card p-6 space-y-4 ring-1 ring-primary-100/70 shadow-elevated"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">First name</label>
@@ -298,9 +319,13 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={sending}
-              className="btn-primary w-full disabled:opacity-60"
+              className="relative w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-white font-semibold bg-gradient-to-r from-primary to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.99] transition shadow-elevated disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
+              {sending && (
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              )}
               {sending ? "Sending code…" : "Send verification code"}
+              {!sending && <Icon name="arrow_forward" size={18} />}
             </button>
             <div className="text-center text-label-md text-ink-muted pt-2 border-t border-surface-border">
               Already have an account?{" "}
@@ -310,7 +335,10 @@ export default function RegisterPage() {
             </div>
           </form>
         ) : (
-          <form onSubmit={verifyAndRegister} className="card p-6 space-y-5">
+          <form
+          onSubmit={verifyAndRegister}
+          className="card p-6 space-y-5 ring-1 ring-primary-100/70 shadow-elevated"
+        >
             <div>
               <label className="label">Verification code</label>
               <div
@@ -328,16 +356,20 @@ export default function RegisterPage() {
                     onChange={(e) => setDigit(i, e.target.value.replace(/\D/g, ""))}
                     onKeyDown={(e) => onKeyDown(i, e)}
                     aria-label={`Digit ${i + 1}`}
-                    className={`w-12 h-14 text-center text-title-lg font-bold rounded-lg border outline-none transition focus:ring-2 focus:ring-primary/40 ${
+                    className={`w-12 h-14 text-center text-title-lg font-bold rounded-lg border-2 outline-none transition focus:ring-4 ${
                       otpError
-                        ? "border-red-400 bg-red-50"
-                        : "border-surface-border bg-surface-white"
+                        ? "border-accent-danger bg-red-50 text-accent-danger focus:border-accent-danger focus:ring-accent-danger/20"
+                        : d
+                          ? "border-primary bg-primary-50 text-primary"
+                          : "border-surface-border bg-surface-white text-ink focus:border-primary focus:ring-primary/20"
                     }`}
                   />
                 ))}
               </div>
               {otpError && (
-                <p className="text-label-sm text-red-600 mt-2">{otpError}</p>
+                <p className="flex items-center gap-1.5 text-label-sm text-accent-danger mt-2">
+                  <Icon name="error" size={14} /> {otpError}
+                </p>
               )}
               <p className="text-label-sm text-ink-subtle mt-2">
                 The code expires in 10 minutes.
@@ -347,9 +379,13 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={verifying || otp.join("").length !== OTP_LEN}
-              className="btn-primary w-full disabled:opacity-60"
+              className="relative w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-white font-semibold bg-gradient-to-r from-primary to-primary-700 hover:from-primary-700 hover:to-primary-800 active:scale-[0.99] transition shadow-elevated disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100"
             >
+              {verifying && (
+                <span className="inline-block w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              )}
               {verifying ? "Creating account…" : "Verify & create account"}
+              {!verifying && <Icon name="check_circle" size={18} />}
             </button>
 
             <div className="flex items-center justify-between text-label-md">

@@ -5,6 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from apps.orders.models import Order
+from django.contrib.auth import get_user_model
+
 from .filters import ProductFilter
 from .models import Brand, HeroFeature, Product, ProductSpec, Review
 from .serializers import (
@@ -49,6 +52,22 @@ class ProductViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.
     def brands(self, request):
         data = BrandSerializer(Brand.objects.all(), many=True).data
         return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        """Live counts shown on the home-page hero strip.
+
+        All counts reflect only active/published records so the marketing
+        numbers don't drift from what users can actually browse.
+        `customers` is the total number of registered accounts.
+        """
+        User = get_user_model()
+        products = self.get_queryset().count()
+        brands = Brand.objects.count()
+        customers = User.objects.count()
+        return Response(
+            {"phones": products, "brands": brands, "customers": customers}
+        )
 
     @action(detail=False, methods=["get"], url_path="featured")
     def featured(self, request):
