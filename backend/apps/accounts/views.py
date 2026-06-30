@@ -6,6 +6,7 @@ from django.core.mail import get_connection
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, permissions, serializers, status
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -210,10 +211,17 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class PasswordResetRequestView(APIView):
     """POST /api/auth/password/reset/ — send a reset email.
 
-    Always returns 200 even when the email isn't on file, so attackers
-    can't enumerate accounts. In DEBUG mode, a real send failure surfaces
-    the underlying SMTP error so misconfiguration is obvious during
-    development.
+    Returns 404 when no active user is associated with the supplied email,
+    so legitimate users get immediate feedback instead of waiting for a
+    link that will never come.
+
+    NOTE on enumeration: confirming account existence is a deliberate
+    product decision (better UX) and explicitly trades off some
+    enumeration resistance. Mitigations in front of this view
+    (rate limiting + CAPTCHA) are out of scope here.
+
+    In DEBUG mode, a real send failure surfaces the underlying SMTP
+    error so misconfiguration is obvious during development.
     """
 
     permission_classes = (permissions.AllowAny,)
@@ -225,10 +233,35 @@ class PasswordResetRequestView(APIView):
 
         from .emails import send_password_reset_email
 
-        # Guard against the most common misconfiguration: SMTP backend selected
-        # but no host/user/password configured. Django's SMTP backend will raise
-        # an opaque "Invalid address ''" if it can't build a valid envelope, so
-        # we short-circuit with an actionable message instead.
+        user = (
+            User.objects.filter(email__iexact=email, is_active=True)
+            .first()
+        )
+        # No matching active account → tell the caller straight away.
+        if user is None:
+            raise NotFound(
+                detail="No account is registered with this email address.",
+                code="email_not_registered",
+            )
+        if not user.has_usable_password():
+            # Social-only / unusable-password accounts can't reset via
+            # email — surface a clear, actionable message.
+            return Response(
+                {
+                    "detail": (
+                        "This account signs in with a social provider and "
+                        "has no password to reset. Please use the original "
+                        "sign-in method."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Guard against the most common misconfiguration: SMTP backend
+        # selected but no host/user/password configured. Django's SMTP
+        # backend will raise an opaque "Invalid address ''" if it can't
+        # build a valid envelope, so we short-circuit with an actionable
+        # message instead.
         smtp_selected = "smtp" in settings.EMAIL_BACKEND.lower()
         smtp_misconfigured = (
             smtp_selected
@@ -251,57 +284,68 @@ class PasswordResetRequestView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        user = User.objects.filter(email__iexact=email, is_active=True).first()
-        if user and user.has_usable_password():
-            try:
-                # Pre-flight the SMTP connection so we get a clear error
-                # *before* message construction fails halfway through.
-                # This is a no-op for the console backend.
-                connection = get_connection()
-                connection.open()
-            except Exception as exc:
-                if settings.DEBUG:
-                    return Response(
-                        {
-                            "detail": (
-                                "If an account exists for that email, a "
-                                "reset link has been sent."
-                            ),
-                            "debug_error": (
-                                f"Email backend '{settings.EMAIL_BACKEND}' "
-                                f"failed to open: {exc.__class__.__name__}: {exc}"
-                            ),
-                        },
-                        status=status.HTTP_200_OK,
+        try:
+            # Pre-flight the SMTP connection so we get a clear error
+            # *before* message construction fails halfway through.
+            # This is a no-op for the console backend.
+            connection = get_connection()
+            connection.open()
+        except Exception as exc:
+            if settings.DEBUG:
+                return Response(
+                    {
+                        "detail": (
+                            "We couldn't send the reset email due to a "
+                            "server configuration problem."
+                        ),
+                        "debug_error": (
+                            f"Email backend '{settings.EMAIL_BACKEND}' "
+                            f"failed to open: {exc.__class__.__name__}: {exc}"
+                        ),
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            # In production stay silent on mail-server details, but
+            # still tell the user the send didn't happen.
+            return Response(
+                {
+                    "detail": (
+                        "We couldn't send the reset email right now. "
+                        "Please try again in a few minutes."
                     )
-                # In production stay silent — never reveal mail-server details
-                # to a stranger who is probing email addresses.
-            try:
-                send_password_reset_email(request, user)
-            except Exception as exc:
-                if settings.DEBUG:
-                    return Response(
-                        {
-                            "detail": (
-                                "If an account exists for that email, a "
-                                "reset link has been sent."
-                            ),
-                            "debug_error": (
-                                f"Send failed via {settings.EMAIL_BACKEND}: "
-                                f"{exc.__class__.__name__}: {exc}"
-                            ),
-                        },
-                        status=status.HTTP_200_OK,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            send_password_reset_email(request, user)
+        except Exception as exc:
+            if settings.DEBUG:
+                return Response(
+                    {
+                        "detail": (
+                            "We couldn't send the reset email due to a "
+                            "server problem."
+                        ),
+                        "debug_error": (
+                            f"Send failed via {settings.EMAIL_BACKEND}: "
+                            f"{exc.__class__.__name__}: {exc}"
+                        ),
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            return Response(
+                {
+                    "detail": (
+                        "We couldn't send the reset email right now. "
+                        "Please try again in a few minutes."
                     )
-                # Otherwise swallow — same anti-enumeration guarantee.
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response(
-            {
-                "detail": (
-                    "If an account exists for that email, a reset link "
-                    "has been sent."
-                )
-            },
+            {"detail": "A password reset link has been sent to your email."},
             status=status.HTTP_200_OK,
         )
 

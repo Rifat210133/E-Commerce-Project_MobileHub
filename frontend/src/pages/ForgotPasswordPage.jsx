@@ -8,10 +8,15 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  // Backend now rejects unregistered / unusable-password emails with a
+  // non-2xx; surface that detail inline so the user sees *why* nothing
+  // was sent instead of a vague toast that scrolls away.
+  const [error, setError] = useState("");
   const notify = useUIStore((s) => s.notify);
 
   const submit = async (e) => {
     e.preventDefault();
+    setError("");
     setBusy(true);
     try {
       // The backend returns 200 with a possible `debug_error` field when an
@@ -22,10 +27,18 @@ export default function ForgotPasswordPage() {
       setSent(true);
     } catch (err) {
       const d = err.response?.data;
+      const code = err.response?.data?.code || "";
       const msg =
         (d && (d.detail || d.email?.[0])) ||
         "We couldn't process that email. Check the address and try again.";
-      notify(msg, "error");
+      // 404 = email not on file → give a precise, actionable message
+      // even if the server's detail string was somehow empty.
+      const finalMsg =
+        code === "email_not_registered" || err.response?.status === 404
+          ? "This email isn't registered. Please check the address or create a new account."
+          : msg;
+      setError(finalMsg);
+      notify(finalMsg, "error");
     } finally {
       setBusy(false);
     }
@@ -68,11 +81,26 @@ export default function ForgotPasswordPage() {
                   type="email"
                   className="input"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError("");
+                  }}
                   placeholder="you@example.com"
                   required
+                  aria-invalid={!!error || undefined}
+                  aria-describedby={error ? "forgot-error" : undefined}
                 />
               </div>
+              {error && (
+                <div
+                  id="forgot-error"
+                  role="alert"
+                  className="flex items-start gap-2 rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-body-sm text-error"
+                >
+                  <Icon name="error_outline" size={18} className="mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={busy}
@@ -80,12 +108,19 @@ export default function ForgotPasswordPage() {
               >
                 {busy ? "Sending link…" : "Send reset link"}
               </button>
-              <div className="text-center text-label-md text-ink-muted">
-                Remembered it?{" "}
+              <p className="text-center text-label-md text-ink-muted">
+                Don't have an account?{" "}
+                <Link
+                  to="/register"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Create one
+                </Link>
+                {" · "}
                 <Link to="/login" className="text-primary font-medium hover:underline">
                   Back to sign in
                 </Link>
-              </div>
+              </p>
             </form>
           )}
         </div>
