@@ -26,17 +26,37 @@ export default function ForgotPasswordPage() {
       if (resp?.debug_error) notify(resp.debug_error, "error");
       setSent(true);
     } catch (err) {
-      const d = err.response?.data;
-      const code = err.response?.data?.code || "";
-      const msg =
-        (d && (d.detail || d.email?.[0])) ||
-        "We couldn't process that email. Check the address and try again.";
-      // 404 = email not on file → give a precise, actionable message
-      // even if the server's detail string was somehow empty.
-      const finalMsg =
-        code === "email_not_registered" || err.response?.status === 404
-          ? "This email isn't registered. Please check the address or create a new account."
-          : msg;
+      const status = err.response?.status;
+      const detail =
+        err.response?.data?.detail ||
+        err.response?.data?.email?.[0] ||
+        "";
+      // 404 = email not on file. We surface this even if the server didn't
+      // include a detail string, so the user always knows *why* nothing
+      // arrived in their inbox.
+      let finalMsg;
+      if (
+        status === 404 ||
+        err.response?.data?.code === "email_not_registered"
+      ) {
+        finalMsg =
+          "This email isn't registered. Please use a registered account email address.";
+      } else if (status === 429) {
+        finalMsg =
+          "Too many reset attempts. Please wait a minute and try again.";
+      } else if (status === 503) {
+        finalMsg =
+          "We couldn't reach the mail server right now. Please try again in a few minutes.";
+      } else if (status === 400) {
+        // Includes the social-provider / unusable-password case.
+        finalMsg = detail || "We couldn't process that request.";
+      } else if (!err.response) {
+        finalMsg =
+          "Can't reach the server. Please check your connection and try again.";
+      } else {
+        finalMsg =
+          detail || "We couldn't process that email. Please try again.";
+      }
       setError(finalMsg);
       notify(finalMsg, "error");
     } finally {
