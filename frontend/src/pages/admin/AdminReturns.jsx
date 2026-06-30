@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { adminApi } from "../../api";
 import { fmt } from "../../lib/format";
 import { useUIStore } from "../../stores/uiStore";
@@ -79,6 +79,14 @@ export default function AdminReturns() {
   const [active, setActive] = useState(null); // ReturnRequest being managed
   const [adminNote, setAdminNote] = useState("");
 
+  // Deep-link support: a notification can land here with ?id=<return_id> and
+  // we want the manage modal to open automatically on that exact row.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepLinkId = searchParams.get("id");
+  // Track which deep-link id we've already honored so we don't re-open the
+  // modal on every data refresh (status filter change, note save, etc.).
+  const openedDeepLinkRef = useRef(null);
+
   const load = () => {
     setData(null);
     const params = {};
@@ -96,6 +104,78 @@ export default function AdminReturns() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  // Honor ?id=<return_id> deep links: once the list finishes loading,
+  // open the modal for that return. If the requested id isn't in the
+  // currently-filtered list, fetch it directly so we can still open it
+  // (and reset the status filter to "All" so the row is visible behind
+  // the modal).
+  useEffect(() => {
+    if (!deepLinkId) return;
+    if (openedDeepLinkRef.current === deepLinkId) return;
+    if (!data) return;
+
+    const target = data.find((r) => String(r.id) === String(deepLinkId));
+    if (target) {
+      openedDeepLinkRef.current = deepLinkId;
+      openManage(target);
+      return;
+    }
+
+    // Row is filtered out (or was paginated away). Fetch it on its own.
+    let cancelled = false;
+    adminApi
+      .adminReturnDetail(deepLinkId)
+      .then((rr) => {
+        if (cancelled) return;
+        openedDeepLinkRef.current = deepLinkId;
+        // Drop the status filter so the row shows up underneath the modal.
+        if (status !== "All") setStatus("All");
+        openManage(rr);
+      })
+      .catch(() => {
+        // Surface a soft error and clear the bad id so we don't loop.
+        notify("That return request could not be loaded.", "danger");
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("id");
+            return next;
+          },
+          { replace: true }
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, deepLinkId]);
+
+  // Sync ?id= with the modal: open the modal manually -> set id; close -> clear.
+  useEffect(() => {
+    const current = searchParams.get("id");
+    if (active && String(active.id) !== current) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set("id", String(active.id));
+          return next;
+        },
+        { replace: true }
+      );
+    } else if (!active && current) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("id");
+          return next;
+        },
+        { replace: true }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
 
   const rows = useMemo(() => {
     if (!data) return [];

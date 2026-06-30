@@ -113,14 +113,19 @@ export default function NotificationBell() {
               // Decide where the "View" link should land. Return-related
               // notifications always go to the returns queue (the order is
               // still attached for display, but the admin's primary action
-              // is reviewing the return itself).
+              // is reviewing the return itself). When the notification
+              // carries a return_id in its meta, deep-link straight to
+              // that row's manage modal via ?id=<id>.
               const isReturnKind =
                 typeof n.kind === "string" && n.kind.startsWith("return");
-              const target = isReturnKind
-                ? "/admin/returns"
-                : n.order
-                  ? `/admin/orders`
-                  : null;
+              let target = null;
+              if (isReturnKind) {
+                const rid =
+                  n?.meta?.return_id ?? n?.meta?.returnId ?? n?.return_id;
+                target = rid ? `/admin/returns?id=${rid}` : "/admin/returns";
+              } else if (n.order) {
+                target = `/admin/orders`;
+              }
               return (
                 <div
                   key={n.id}
