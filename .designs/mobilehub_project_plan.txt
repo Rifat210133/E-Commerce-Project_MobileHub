@@ -1,0 +1,28 @@
+# Project Name: MobileHub
+## Design Goals
+- **Persona**: Tech-savvy customers and efficient platform admins.
+- **Style**: Modern, clean, minimal, premium.
+- **Palette**: White background, Deep Blue (#1E3A8A) and Dark Gray (#1F2937) accents.
+- **Components**: Material Design inspired, high-fidelity product cards, data-rich dashboards.
+
+## Screen List Proposal
+
+### Phase 1: Customer Journey (Mobile-First)
+1. **Landing/Home Page**: Hero banner, trending phones, deals, and brand sections.
+2. **Product Listing Page**: Grid view with advanced filters (RAM, Camera, 5G) and AI recommendations.
+3. **Product Details Page**: Multi-image gallery, specs table, and YouTube review integration.
+4. **Shopping Cart & Checkout**: Streamlined multi-step process from cart to order confirmation.
+5. **User Dashboard & Order Tracking**: Profile management and visual order progress timeline.
+
+### Phase 2: Authentication
+6. **Login / Registration**: Clean, secure entry points for users.
+
+### Phase 3: Admin Experience (Desktop-Optimized)
+7. **Admin Dashboard**: Analytics overview with revenue, orders, and sales graphs.
+8. **Product Management**: Interface for adding/editing inventory and specifications.
+9. **Order & Customer Management**: Tools for tracking fulfillment and managing user data.
+
+## Features to Highlight
+- **AI Recommendation Engine**: "Best Gaming," "Best Camera," and budget-friendly suggestions.
+- **YouTube Integration**: Expert video reviews embedded on product pages.
+- **Visual Order Tracking**: Interactive timeline for status updates.

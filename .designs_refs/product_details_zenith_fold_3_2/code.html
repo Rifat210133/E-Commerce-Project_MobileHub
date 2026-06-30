@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MobileHub | Product Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .spec-card:hover {
+            box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.08);
+        }
+        .active-thumb {
+            border-color: #00236f;
+            border-width: 2px;
+        }
+        .glass-effect {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#90a8ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "status-error": "#EF4444",
+                        "border-subtle": "#E5E7EB",
+                        "surface-variant": "#e1e3e4",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-secondary-container": "#596373",
+                        "on-surface": "#191c1d",
+                        "inverse-surface": "#2e3132",
+                        "on-background": "#191c1d",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "secondary-container": "#d6e0f3",
+                        "on-tertiary-container": "#f39461",
+                        "on-secondary-fixed": "#121c2a",
+                        "tertiary": "#4b1c00",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcb",
+                        "surface": "#f8f9fa",
+                        "outline-variant": "#c5c5d3",
+                        "on-surface-variant": "#444651",
+                        "tertiary-fixed-dim": "#ffb691",
+                        "status-success": "#10B981",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#264191",
+                        "background": "#f8f9fa",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#1e3a8a",
+                        "inverse-primary": "#b6c4ff",
+                        "outline": "#757682",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed": "#d9e3f6",
+                        "on-primary": "#ffffff",
+                        "secondary": "#555f6f",
+                        "surface-tint": "#4059aa",
+                        "on-tertiary-fixed-variant": "#773205",
+                        "tertiary-container": "#6e2c00",
+                        "status-warning": "#F59E0B",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00164e",
+                        "secondary-fixed-dim": "#bdc7d9",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#341100",
+                        "primary": "#00236f",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-white": "#FFFFFF",
+                        "on-secondary-fixed-variant": "#3d4756",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "primary-fixed": "#dce1ff",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "container-max": "1280px",
+                        "gutter-desktop": "24px",
+                        "margin-mobile": "20px",
+                        "gutter-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "data-tabular": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-tabular": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "display-lg-mobile": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface-white dark:bg-on-surface shadow-sm transition-all duration-300">
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary" data-icon="arrow_back">arrow_back</button>
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">MobileHub</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</button>
+<button class="material-symbols-outlined text-on-surface-variant relative" data-icon="shopping_cart">
+                shopping_cart
+                <span class="absolute -top-1 -right-1 bg-primary text-on-primary text-[10px] w-4 h-4 rounded-full flex items-center justify-center">2</span>
+</button>
+</div>
+</header>
+<main class="pt-16 pb-32">
+<!-- Hero Section: Image Gallery -->
+<section class="bg-surface-white w-full overflow-hidden">
+<div class="relative w-full aspect-square md:aspect-video">
+<img class="w-full h-full object-contain p-8" data-alt="A professional studio product shot of a sleek flagship smartphone in Obsidian Black. The device features a seamless edge-to-edge display with a vibrant OLED screen. Lighting is high-key with soft reflections that highlight the polished titanium frame. The background is a minimalist, pure white architectural space, emphasizing a premium technical authority aesthetic. The image captures the phone from a dynamic three-quarter angle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE96V2IUaqdvTmqxP_vXC3aO_baJBeZaoFvV8rH3OYHql5frz6NLy5kT9SGs8pNdUBzKuREguVpr62wdc9QpLas3-65Xh850qIagmt4jS7O_VzTQezMUCIycK6tzAz95WrFU0iyWEF1M9-BTF0jI39FAp4pm0PQ7kuFHK1vIM4H_Ub5eXLHd5psJ0Vc_jagr-LnnnC2HiXEoWWCMUgqyvyu4rxnhfYkMLC1kMKiAzgjeHCw8AkF5K-5ww4gm5pjO2FWW6Kyw3iW00"/>
+<!-- Pagination Dots -->
+<div class="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+<span class="w-2 h-2 rounded-full bg-outline-variant"></span>
+</div>
+</div>
+<!-- Thumbnails -->
+<div class="flex gap-4 px-margin-mobile overflow-x-auto pb-6 no-scrollbar">
+<div class="min-w-[72px] h-[72px] rounded-xl active-thumb bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A macro close-up of a flagship smartphone's sophisticated triple-lens camera module. The lenses are deep blue and glass-coated, reflecting soft studio lights. The metal surrounding the lenses is brushed titanium, showing a high level of precision and hardware excellence. Minimalist tech aesthetic with professional studio lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDrTZg2oISv626y6qw8R9VEdAtrlhmiHS7ZVU_Ab-XVFlIP04MUdvBhe8uKnnveyTR5SArnyvkdf2vwLZfSQ7WN7YEMPGQyfgUruR9lx2tRa8N2ywl79mYO0Q4AUVUl88IipT_k1msBNaSfHAHBhCnmc2eLd2pmX6_vNQdpx83ledAE2ZghrSuyeAP37uIw_OX1Lqhco0YHiEZtZBOA4wGsx1hvK7vjF42-jnpYgEIVALKxaUH9Yum3iph8NyVNqySmdqGEB3XUFZ4"/>
+</div>
+<div class="min-w-[72px] h-[72px] rounded-xl border border-outline-variant bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Side profile view of a modern ultra-slim smartphone showing its precision-engineered power button and volume rockers. The titanium finish glows under soft, focused lighting. The depth of field is shallow, blurring the minimalist white background to focus on the technical details of the hardware." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXsPtabaX8VDxLj04gY0JUPOZVRSBgnKjkqi6RZ5Ai7bSa7s8KCwnqaihzEnj1dwQqwVxLwv-EUOd6usMrZXamAp_Kmw_hL-BJbOASf161OzD4yRWbki-mmj5mEMvfIyShaN8hvZqF8s7HjRA58tl_D4vcLtSS0R-cRpqb1QI2KBzr8Ug2RMvAUrnt_-BQ9iJWxufO6Fmw7RO2kvtuSKRFgUjfdEXe31GgW9b1DlmaI2eYTOs-aELGBMUASjdr8mVdl-qL2b1wUyE"/>
+</div>
+<div class="min-w-[72px] h-[72px] rounded-xl border border-outline-variant bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Frontal shot of a premium smartphone displaying a high-resolution wallpaper with vibrant blue and orange abstract waves. The bezels are incredibly thin, creating a near-borderless screen experience. The lighting is bright and clean, consistent with a modern corporate technology brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIk-UKgIR7t_vnHXuQ7SdswI2j8eC_BxCmXvYs-CEXONcoTjY9WAt6C_dY11ht-Z7d3geTpnO39j1EoxpwhNOBXBT5sQK_I0I4knH0WI4YUy2gneRPIk6cC3Pyx6R7a2PIibbngc1boUNYPkplFE1FacRg8BleCKAOpVlBGdyn6kTvFpYevWMkQ7H5hT7WHbFTgV-6D6VPIIQm2V0R6ksXJb_HxGaKb2dggUNt_IDa4a-e_64IE6YZnsqWQUir0af2M_tDMmdnzlY"/>
+</div>
+<div class="min-w-[72px] h-[72px] rounded-xl border border-outline-variant bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A lifestyle product shot of a smartphone lying elegantly on a clean white desk next to a minimalist keyboard and a small glass of water. The scene is bathed in natural daylight, creating a high-trust, premium atmosphere for a high-end consumer hardware product." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAjswMMbvC007jmiLirnpq59uyPE6XnGRkIXNRssnUcqgZw-ElsYaddMRxR6ssIhYDhYqvpNxFLyCgFhV-gWZAmLFGJFh4G69RZ7dQu127L_6rttCdqyz-OWPyExlIbnxJy4KjD_6pfu-D0dV-pYOHX7hU5ZYMKSrf7cb41kzNfyXB1j1nrvgZfM0oVa8fdkEaf5Awr00wbWlvtKj9p3howJPpexpK_m_Tah549b27Xn2tXc1HCnSyZm_OZmAdaygxLZkF6gHVU3Bo"/>
+</div>
+</div>
+</section>
+<!-- Product Identity -->
+<section class="px-margin-mobile pt-6">
+<div class="flex flex-col gap-2">
+<p class="text-label-md font-label-md text-primary tracking-widest uppercase">FLAGSHIP SERIES</p>
+<h1 class="text-headline-lg-mobile font-headline-lg-mobile text-on-surface">Nova X Pro Max</h1>
+<div class="flex items-center gap-2">
+<div class="flex text-status-warning">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 0.5;">star_half</span>
+</div>
+<span class="text-label-md font-label-md text-on-surface-variant">(1,248 Reviews)</span>
+</div>
+<div class="mt-4 flex items-baseline gap-2">
+<span class="text-headline-lg-mobile font-headline-lg-mobile text-primary font-bold">$1,099.00</span>
+<span class="text-body-md font-body-md text-outline line-through">$1,299.00</span>
+</div>
+</div>
+<!-- Key Specs Bento -->
+<div class="grid grid-cols-3 gap-3 mt-8">
+<div class="bg-surface-white p-4 rounded-xl shadow-sm spec-card flex flex-col items-center text-center transition-all">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="memory">memory</span>
+<span class="text-label-md font-label-md text-on-surface-variant">RAM</span>
+<span class="text-body-md font-bold text-on-surface">12GB</span>
+</div>
+<div class="bg-surface-white p-4 rounded-xl shadow-sm spec-card flex flex-col items-center text-center transition-all">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="storage">storage</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Storage</span>
+<span class="text-body-md font-bold text-on-surface">256GB</span>
+</div>
+<div class="bg-surface-white p-4 rounded-xl shadow-sm spec-card flex flex-col items-center text-center transition-all">
+<span class="material-symbols-outlined text-primary mb-2" data-icon="battery_full">battery_full</span>
+<span class="text-label-md font-label-md text-on-surface-variant">Battery</span>
+<span class="text-body-md font-bold text-on-surface">5000mAh</span>
+</div>
+</div>
+</section>
+<!-- Video Reviews -->
+<section class="mt-12 px-margin-mobile">
+<h2 class="text-headline-md font-headline-md mb-6">Watch Reviews</h2>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-4">
+<div class="min-w-[280px] group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden mb-3">
+<img class="w-full h-full object-cover" data-alt="A YouTube style thumbnail featuring a professional tech reviewer holding the Nova X Pro Max. The background is a high-tech studio with blue LED accents and soft bokeh. Large text overlay says 'THE NEW KING?' in a bold white sans-serif font. The image feels authoritative and trustworthy for a premium tech brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxBrEkCrDKdVqh-aoN9V_w-yr9HwMCimoxy3rKmh0k_y4Zb1-wd_OdhR4j4RQwFKQ30GO1huoJ085pZJc3nGbcXSkaAOAH1EW6Dn91tfzDrgG62c_k2HSLI9vFawcQoPNevqeSh2GLfExQtO2izr9JWik9LtNn1Zt4gXwN9P2M0iyhXpoXmna2HqnkIvocKIV2a_vNtitZquemslUAZFaNPomx1dgLpO6Bmnbru8nGksV3dO5R9sY_hB_uL6KfiWzuiihNR92Yfaw"/>
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-all">
+<span class="material-symbols-outlined text-surface-white text-5xl" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+</div>
+</div>
+<p class="text-body-md font-bold text-on-surface line-clamp-1">Full 24 Hour Durability Test</p>
+<p class="text-label-md font-label-md text-on-surface-variant">TechMaster • 1.2M views</p>
+</div>
+<div class="min-w-[280px] group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden mb-3">
+<img class="w-full h-full object-cover" data-alt="A tech review video thumbnail showing a split screen comparison between two high-end smartphone camera results. One side shows a vibrant city nightscape. The reviewer is visible in a small inset circle. Bold typography highlights 'NIGHT MODE GURU'. Minimalist and technical aesthetic with deep blue tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCY54SaiE-Y8oA1inWs2vnbCInbKYZoJYoVWveEsgu5YukFvaSqoOOuZYooPDudlLBCCe4KxFDYqGlJfjO1mGCDtlkjTTVVnahhdnvk0TW4muS3XiuEKP2cOShAaf_iVYK5Db9tnSXXU-3p47XCLbzBAh1TVU0TeVxgNBE-GCbbPEj6QyhWy-bX7LDZ_OOachSm6H8RSrz3QfF_h3KNiBmdvPbhKmm6c1NKfIrL422_S6xeC7rrujRafVuC5oT3sEb0YVaeeLtHFZE"/>
+<div class="absolute inset-0 bg-black/20 flex items-center justify-center group-hover:bg-black/40 transition-all">
+<span class="material-symbols-outlined text-surface-white text-5xl" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+</div>
+</div>
+<p class="text-body-md font-bold text-on-surface line-clamp-1">Camera Shootout: Pro Max Edition</p>
+<p class="text-label-md font-label-md text-on-surface-variant">Gadget Hub • 850K views</p>
+</div>
+</div>
+</section>
+<!-- Detailed Specifications -->
+<section class="mt-12 px-margin-mobile">
+<h2 class="text-headline-md font-headline-md mb-6">Detailed Specifications</h2>
+<div class="bg-surface-white rounded-2xl overflow-hidden border border-border-subtle">
+<table class="w-full text-left border-collapse">
+<tbody>
+<tr class="border-b border-border-subtle">
+<th class="px-6 py-4 text-label-md font-label-md text-on-surface-variant w-1/3">Display</th>
+<td class="px-6 py-4 text-body-md text-on-surface">6.7" LTPO OLED, 120Hz</td>
+</tr>
+<tr class="border-b border-border-subtle">
+<th class="px-6 py-4 text-label-md font-label-md text-on-surface-variant">Processor</th>
+<td class="px-6 py-4 text-body-md text-on-surface">Nexus A15 Bionic (4nm)</td>
+</tr>
+<tr class="border-b border-border-subtle">
+<th class="px-6 py-4 text-label-md font-label-md text-on-surface-variant">Main Camera</th>
+<td class="px-6 py-4 text-body-md text-on-surface">50MP + 48MP + 12MP</td>
+</tr>
+<tr class="border-b border-border-subtle">
+<th class="px-6 py-4 text-label-md font-label-md text-on-surface-variant">OS</th>
+<td class="px-6 py-4 text-body-md text-on-surface">Android 14 (Oxygen UI)</td>
+</tr>
+<tr>
+<th class="px-6 py-4 text-label-md font-label-md text-on-surface-variant">Weight</th>
+<td class="px-6 py-4 text-body-md text-on-surface">221 grams</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Recommendations -->
+<section class="mt-16 px-margin-mobile mb-12">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-headline-md font-headline-md">You Might Also Like</h2>
+<span class="bg-secondary-container text-on-secondary-container text-[10px] px-2 py-1 rounded uppercase font-bold tracking-wider">AI PICK</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- Recommended Card 1 -->
+<div class="bg-surface-white rounded-xl overflow-hidden shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col">
+<div class="aspect-square bg-surface-container-low p-4">
+<img class="w-full h-full object-contain" data-alt="A sleek minimalist smartphone in Pearl White, presented as a high-end lifestyle tech product. The lighting is soft and airy, creating a high-trust feeling. The phone is shown floating slightly with subtle shadows against a light gray background, matching the corporate modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBa8cPlzGMBBZu4W0NIwBAVpGNwsnYVpXVsKqQV9djVAuJaBHX8kaS_pdIOzD-ZyzfgsqlYcwnGkvetypegdvHkz4GhdXkdZrPbZ-yjQNKbpFwBzqYIKh24sJdfyUdhiRBKk01qQUky6jIkAYThvzQxSqqEMViKm5NW6If-3YN1W7T04oz1iD41tKi4E7xN2FhytJy_z7OOYOViml_fKFMO7ytpNoWp88eiOnIOhHsu5Lfy66D46ppZRxkhzWEJf58OsJcy2CqD58E"/>
+</div>
+<div class="p-4">
+<h3 class="text-body-md font-bold text-on-surface truncate">Nova Lite Gen 2</h3>
+<p class="text-primary font-bold text-body-md mt-1">$649</p>
+</div>
+</div>
+<!-- Recommended Card 2 -->
+<div class="bg-surface-white rounded-xl overflow-hidden shadow-sm border border-transparent hover:border-primary/20 transition-all flex flex-col">
+<div class="aspect-square bg-surface-container-low p-4">
+<img class="w-full h-full object-contain" data-alt="A premium wireless charging pad with a minimalist matte black finish. A modern smartphone sits on top, with a glowing green light indicating active charging. The scene is shot in a professional office environment with soft focus on the background. High precision hardware presentation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2KmnjTu_5u9sxfHdP48Oii9EgUIQI4UJ1ZcNTTsR8VnYM7E4AMWmL_UmDCUXdnP37ZkRYwko2GS8XnrhC0Ei1TuoE8mDBRV5rEmdjcmOZGdoGMFb6RXLXhAkrVrQBLm4lClJGZOvtm83HbMcTaLEJgnM0GlL9pqhj4xZ_JmXDg14P4FSAGnvoXZABlT8LVIx_VuKkatdONp7sRFxn4VTKib1ze155uHpi8K9wY0NIbcurmOsuh41KDEdzXIEOaHugwg3Z9ikPOzI"/>
+</div>
+<div class="p-4">
+<h3 class="text-body-md font-bold text-on-surface truncate">PowerStation Pro</h3>
+<p class="text-primary font-bold text-body-md mt-1">$89</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 w-full z-50 bg-surface-white shadow-[0px_-4px_20px_rgba(0,0,0,0.05)] px-margin-mobile py-4 flex gap-4 items-center glass-effect">
+<button class="flex-1 bg-surface-container-high text-on-surface h-14 rounded-xl font-bold active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+            Add to Cart
+        </button>
+<button class="flex-[1.5] bg-primary text-on-primary h-14 rounded-xl font-bold active:scale-95 transition-transform shadow-lg shadow-primary/20">
+            Buy Now
+        </button>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        // Subtle scroll behavior for header
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('shadow-md', 'h-14');
+                header.classList.remove('shadow-sm', 'h-16');
+            } else {
+                header.classList.add('shadow-sm', 'h-16');
+                header.classList.remove('shadow-md', 'h-14');
+            }
+        });
+
+        // Thumbnail switcher logic (Mock)
+        const thumbnails = document.querySelectorAll('.active-thumb, .border-outline-variant');
+        thumbnails.forEach(thumb => {
+            thumb.addEventListener('click', function() {
+                thumbnails.forEach(t => {
+                    t.classList.remove('active-thumb');
+                    t.classList.add('border-outline-variant');
+                });
+                this.classList.add('active-thumb');
+                this.classList.remove('border-outline-variant');
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MobileHub | Premium Mobile Hardware</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#90a8ff",
+                    "on-secondary": "#ffffff",
+                    "inverse-on-surface": "#f0f1f2",
+                    "status-error": "#EF4444",
+                    "border-subtle": "#E5E7EB",
+                    "surface-variant": "#e1e3e4",
+                    "on-error-container": "#93000a",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-secondary-container": "#596373",
+                    "on-surface": "#191c1d",
+                    "inverse-surface": "#2e3132",
+                    "on-background": "#191c1d",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "secondary-container": "#d6e0f3",
+                    "on-tertiary-container": "#f39461",
+                    "on-secondary-fixed": "#121c2a",
+                    "tertiary": "#4b1c00",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#ffdbcb",
+                    "surface": "#f8f9fa",
+                    "outline-variant": "#c5c5d3",
+                    "on-surface-variant": "#444651",
+                    "tertiary-fixed-dim": "#ffb691",
+                    "status-success": "#10B981",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#264191",
+                    "background": "#f8f9fa",
+                    "surface-bright": "#f8f9fa",
+                    "primary-container": "#1e3a8a",
+                    "inverse-primary": "#b6c4ff",
+                    "outline": "#757682",
+                    "surface-container-low": "#f3f4f5",
+                    "secondary-fixed": "#d9e3f6",
+                    "on-primary": "#ffffff",
+                    "secondary": "#555f6f",
+                    "surface-tint": "#4059aa",
+                    "on-tertiary-fixed-variant": "#773205",
+                    "tertiary-container": "#6e2c00",
+                    "status-warning": "#F59E0B",
+                    "surface-container": "#edeeef",
+                    "on-primary-fixed": "#00164e",
+                    "secondary-fixed-dim": "#bdc7d9",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed": "#341100",
+                    "primary": "#00236f",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-white": "#FFFFFF",
+                    "on-secondary-fixed-variant": "#3d4756",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d9dadb",
+                    "primary-fixed": "#dce1ff",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "base-unit": "4px",
+                    "container-max": "1280px",
+                    "gutter-desktop": "24px",
+                    "margin-mobile": "20px",
+                    "gutter-mobile": "16px",
+                    "margin-desktop": "40px"
+            },
+            "fontFamily": {
+                    "data-tabular": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "data-tabular": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "display-lg-mobile": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .premium-card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+        .premium-card-shadow:hover {
+            box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background font-body-md text-on-background min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface-white dark:bg-on-surface shadow-sm dark:shadow-none">
+<div class="flex items-center gap-4">
+<button class="active:scale-95 duration-100 text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-primary-fixed">MobileHub</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="active:scale-95 duration-100 text-primary dark:text-primary-fixed">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</header>
+<main class="pt-16">
+<!-- Hero Banner -->
+<section class="relative w-full aspect-[4/5] md:aspect-video overflow-hidden">
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A cinematic, high-fidelity close-up of a flagship smartphone with a titanium frame, resting on a clean, white marble surface. The lighting is soft and directional, highlighting the sophisticated industrial design and the vibrant, edge-to-edge OLED display showing a colorful abstract wallpaper. The overall mood is premium, tech-forward, and minimalist, echoing a high-end electronic boutique aesthetic." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDZco5coIrG00vY13cNLyU5eOTjcZsvyAUqtdMQ8cwD5EJdc_KU6V8YiHPrhZCMewqp4J0mjeRc6fkG5YCEVyyGmlhN3fdUyXSkBpS1deI-7jojhBz9ewed-bNp9FUoaiNcry036YfgU9OS9HXT3SdA5vP3BHEpkdmAtHpiHPvBwYyuZHNFf5PY4_8YOCn4B4jUxcab62-H4fSdERObbEzU59lwjX6ogneq_qBcNplMkdXVz_xYrwXvUL_KAd6ba68QBqKrB-vxHS4')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-on-surface/60 to-transparent"></div>
+<div class="absolute bottom-0 left-0 w-full p-margin-mobile space-y-4">
+<h1 class="text-white font-display-lg-mobile text-display-lg-mobile">The New Standard.</h1>
+<p class="text-white/90 font-body-md text-body-md max-w-[80%]">Experience the future of mobile performance with the latest flagship devices.</p>
+<button class="bg-primary text-white font-label-md text-label-md px-8 py-4 rounded-xl active:scale-95 transition-transform">
+                    Shop Now
+                </button>
+</div>
+</section>
+<!-- Featured Categories -->
+<section class="mt-8 px-margin-mobile">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Categories</h2>
+</div>
+<div class="grid grid-cols-3 gap-3">
+<div class="bg-surface-white p-4 rounded-xl premium-card-shadow flex flex-col items-center gap-2 border border-border-subtle">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<span class="font-label-md text-label-md">Trending</span>
+</div>
+<div class="bg-surface-white p-4 rounded-xl premium-card-shadow flex flex-col items-center gap-2 border border-border-subtle">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">new_releases</span>
+</div>
+<span class="font-label-md text-label-md">Latest</span>
+</div>
+<div class="bg-surface-white p-4 rounded-xl premium-card-shadow flex flex-col items-center gap-2 border border-border-subtle">
+<div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">sell</span>
+</div>
+<span class="font-label-md text-label-md">Deals</span>
+</div>
+</div>
+</section>
+<!-- Featured Brands Scroll -->
+<section class="mt-10 overflow-hidden">
+<h2 class="px-margin-mobile font-headline-md text-headline-md text-on-surface mb-4">Top Brands</h2>
+<div class="flex gap-4 overflow-x-auto no-scrollbar px-margin-mobile pb-4">
+<div class="flex-shrink-0 w-24 h-24 bg-surface-white rounded-full premium-card-shadow border border-border-subtle flex items-center justify-center p-4">
+<img class="w-full h-full object-contain opacity-80" data-alt="The sleek, minimalist Apple logo rendered in a clean, metallic black against a pure white background. The style is sharp, corporate, and high-fidelity, representing precision hardware and luxury tech aesthetics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdu61YchLKSeFOU6f8umNTReVOn0vitPWVb-VIFNUOUOQoe45y_ugKrUl3P2hXh72pCtuQ0vMs3nSgLOwY8-XlnHZq4cXo-5B25ypd2Ghrz9S8mfhLI8bPli3yfe7C-cje_EyTvEhdnUlEOGjBwauXmhKapRW3VVfee8WUB8AXnQtcMvTHGjzWyLfGzELe92WCG9jC8l2kbFOjKi6OPG6wCgan65QYeGMzwTp5v-oS9zyIU8xSllxtD7m9NLr-YLbgxtx_GR1v-sU"/>
+</div>
+<div class="flex-shrink-0 w-24 h-24 bg-surface-white rounded-full premium-card-shadow border border-border-subtle flex items-center justify-center p-4">
+<img class="w-full h-full object-contain opacity-80" data-alt="A high-resolution Samsung brand logo in its signature dark blue, displayed centered on a bright, minimalist white circle. The aesthetic is modern, professional, and reflects global electronic leadership." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8wp4eKSqYTQqYRkvWuCJMqIeiv5xctFgl0ZLiO0qDjxwcFv-ACYmHdLWZQnSEQKwnrLZ4BgBixBn9_5iQPEpaVgAm6LTuaCGtoLmSLHH5YDx5aNCBXPxEcjNa4Bul6yp_g-JWkG21-vBTNClv8zGJL59hGNRdHrKODZMjXap9XkGllULfnxTHAb2tisL780-2X079CV4yW19nLGPQ08yq1A0PZe-uDwNUTCkuZqlBobQ15Mx0OIvD25llYPEQdlpWkHbckQipeQU"/>
+</div>
+<div class="flex-shrink-0 w-24 h-24 bg-surface-white rounded-full premium-card-shadow border border-border-subtle flex items-center justify-center p-4">
+<img class="w-full h-full object-contain opacity-80" data-alt="The vibrant Google G-logo in its classic multi-colored format, set against a pristine white studio background with soft lighting. The look is friendly, clean, and technologically advanced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxxAzMBRy6qmjnaeTEJqYFgQBScHs7nwbDPOvitYAwT1PLwL7f1zdgjLUY2yxFmvUyE5c9pktVah11q1vd-pHpzigXb3IlbntDcdzOtGYJJZ83pVDlIEHAgpv68es1qspeIRLejRZuEe3kuWsMEE4I2X-p1gzQ0wqJN5uqxDJi8Jxz-fMbDDgwofsAocKe_-rnGDP721v4LfFqHWRlpGkpdlVwIdqV8oWorlD_Lvi3630N6XWtUB2-mv-ZDuEg28kfZuVD5tQ_IGE"/>
+</div>
+<div class="flex-shrink-0 w-24 h-24 bg-surface-white rounded-full premium-card-shadow border border-border-subtle flex items-center justify-center p-4">
+<img class="w-full h-full object-contain opacity-80" data-alt="The OnePlus brand logo, a bold red square with a white numeric '1' and plus sign, presented in a sleek, high-contrast digital format. The mood is energetic, modern, and performance-oriented." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQfORhHu-x2dgsXOJtfZ8JVpVVxgvPY0MdTFdR3HiYqezM98LBCTBtZqPxdRNpH6LNn24fwZJxD8EAh-h7-1QkoFXL9cJrzmN6QkNPFeqPFqH7RNchQ9UGoGLX9HaAKZyd-UiojfVYvJX_rtrC14bB2pMo6H5qskjMD9rxFsVNxZtfynj80B-cC1W_sB0_-SEeQrbyoETwkrxPol5XDGIThMuB7oQe7JNG8PlgEO39WsoaMcAa_exnZh5TiL_0KDk5mOhDC-ao3x4"/>
+</div>
+</div>
+</section>
+<!-- Trending Phones -->
+<section class="mt-8 px-margin-mobile">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Trending Now</h2>
+<button class="text-primary font-label-md text-label-md">View All</button>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-surface-white rounded-2xl premium-card-shadow border border-border-subtle overflow-hidden">
+<div class="w-full aspect-video bg-surface relative">
+<img class="w-full h-full object-contain p-6" data-alt="A professional studio product shot of a premium titanium smartphone with a triple-lens camera system on the back. The device is angled to catch soft, overhead light, emphasizing the metallic texture and precision engineering. The background is a clean, neutral gradient of light grays and whites, keeping the focus entirely on the phone's design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDezeP-G1CieMcwBCXCXXBPmyB1CiqoE4tlWN21l2zgUq6hsAG1fcEQ6HZn2LdP6GlkRDZ6LzBY7pv7lzYaGMSiV7KtH7lwpZ2QArzLkstb9SX7GD_PxV3SxLNWHu4OcHcKT3S6C4Mwv2gypRHfOCTKBhDJ6Trv6JtVlVegU9ayRqT6zw-q4bgAFne2lVASYZEIezm7Py3Gtr7ox02yCSnyibqUvY1vtOfQhghOdLh-_bzV6FhkfRQ-Yv1DZLFPfe8Dm-7feCm_aGY"/>
+</div>
+<div class="p-6 space-y-2">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md text-on-surface">Phone 15 Pro Max</h3>
+<span class="text-primary font-headline-md text-headline-md">$1,199</span>
+</div>
+<p class="text-on-surface-variant font-body-md text-body-md">Natural Titanium, 256GB. The ultimate performance powerhouse.</p>
+<div class="pt-4 flex gap-3">
+<button class="flex-1 bg-primary text-white py-3 rounded-xl font-label-md text-label-md active:scale-95 transition-transform">Add to Cart</button>
+<button class="w-12 h-12 flex items-center justify-center border border-border-subtle rounded-xl text-on-surface-variant">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-white rounded-2xl premium-card-shadow border border-border-subtle overflow-hidden">
+<div class="w-full aspect-video bg-surface relative">
+<img class="w-full h-full object-contain p-6" data-alt="An elegant, front-facing view of a cutting-edge Android smartphone with ultra-slim bezels and a punch-hole camera. The screen displays a vivid, high-contrast digital art wallpaper with deep purples and blues. The lighting is clean and professional, creating a sense of luxury and technological superiority in a bright white environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtqpSLbKubMmGQdKUT3DbkNRLygtdH2Znlj9Vc19Lb3645izqo89T51qEzjEPdeGun26n0IIt0vtQzdtQ2Mmx4CkMfkrGJect_S1bP1U4k40r9z4XmFp7vjVULC9mDTgkOi7LiCFtY9Ok_6QvdsV194wkkNAXOgxY4fteKsSLdZPW72fA-M27mLfhFLj7QTaf2XTXs0c2-iyXwh1OzX5VsPaH6XoOTTMlFaYUrZnfLGyNEVYXnrWIG8J6tqsn2cxi5gEsOgVszyIQ"/>
+</div>
+<div class="p-6 space-y-2">
+<div class="flex justify-between items-start">
+<h3 class="font-headline-md text-headline-md text-on-surface">Galaxy S24 Ultra</h3>
+<span class="text-primary font-headline-md text-headline-md">$1,299</span>
+</div>
+<p class="text-on-surface-variant font-body-md text-body-md">Titanium Black, AI-Enhanced. Unleash your creativity.</p>
+<div class="pt-4 flex gap-3">
+<button class="flex-1 bg-primary text-white py-3 rounded-xl font-label-md text-label-md active:scale-95 transition-transform">Add to Cart</button>
+<button class="w-12 h-12 flex items-center justify-center border border-border-subtle rounded-xl text-on-surface-variant">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Best Deals Section -->
+<section class="mt-12 mb-8 bg-primary-container p-margin-mobile">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-headline-md text-white">Best Deals</h2>
+<span class="bg-error text-white px-3 py-1 rounded-full text-label-md font-label-md">Ending Soon</span>
+</div>
+<div class="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+<div class="flex-shrink-0 w-64 bg-surface-white rounded-xl p-4 space-y-3">
+<div class="relative w-full aspect-square bg-surface rounded-lg">
+<img class="w-full h-full object-contain p-2" data-alt="A pair of high-end wireless noise-canceling headphones in a sleek matte charcoal finish. They are presented in a clean, professional studio setting with soft, diffused shadows. The image focuses on the premium materials like soft leather and brushed metal, conveying comfort and acoustic excellence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDI_Vr9E6Enw23V_JziA7yrdwdN9fFCQ53omi5FZwAI_N0iFIjLPqBKbtEryoRWacggCL6q4UdE8NUGOclxtPH2n6HNgzr0vkbzCav0AmI2Pi8vCZnTQx6lfswaTAUVTAFesCxEM6KiEH7YDLweONG89NyCgtND_-Wk71kHg2wnywfO96owZhO-o4iNtKtGJDkLCCB7RHBDDq0-_ZpIHvDOWwELyindBxhuKCYGp_wR6d_X0SJag3ReoT06E1gdeVYYTsY_hQW0Yw"/>
+<div class="absolute top-2 left-2 bg-status-success text-white px-2 py-0.5 rounded text-[10px] font-bold">20% OFF</div>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface truncate">Premium Audio Hub</h4>
+<div class="flex items-center gap-2">
+<span class="text-primary font-bold">$249</span>
+<span class="text-on-surface-variant line-through text-[12px]">$320</span>
+</div>
+</div>
+</div>
+<div class="flex-shrink-0 w-64 bg-surface-white rounded-xl p-4 space-y-3">
+<div class="relative w-full aspect-square bg-surface rounded-lg">
+<img class="w-full h-full object-contain p-2" data-alt="A high-performance smartwatch with a vibrant circular OLED face and a flexible, breathable sports band in deep navy. The display shows fitness tracking data in a modern, clean UI. The overall aesthetic is active, high-tech, and precisely detailed, set against a bright, neutral studio background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARf6VyZfjk7FAG7OKqnCOkvnz-IZT1VAL58MX8Kv6JF0slugNFm0H1ixqWONYx_WCTNy_h_t3r7NyB46-CrzXysEOFENWRB1piPTqi2DPcqa3XXh68dOLztXXvmEEBSCbJr25pLcxejdIplG-7M97LGGCxy9IKaNEEjehO4JWnmyVMy2s8LWUrD1e6Yme_92_a1l5fkkZbsWgp1egO6tofgP2WyIYGW_hI_4PZB_0WNfMM14Q17GiKXOTc__-24CV5yKpvDVBp0vo"/>
+<div class="absolute top-2 left-2 bg-status-success text-white px-2 py-0.5 rounded text-[10px] font-bold">15% OFF</div>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-on-surface truncate">SmartWatch Pro X</h4>
+<div class="flex items-center gap-2">
+<span class="text-primary font-bold">$399</span>
+<span class="text-on-surface-variant line-through text-[12px]">$450</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-white dark:bg-on-surface rounded-t-xl shadow-[0px_-4px_20px_rgba(0,0,0,0.05)]">
+<div class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed font-bold active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-label-md font-label-md">Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant opacity-80 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">grid_view</span>
+<span class="text-label-md font-label-md">Catalog</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant opacity-80 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="text-label-md font-label-md">Cart</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant dark:text-outline-variant opacity-80 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-md font-label-md">Account</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions and scroll effects
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.querySelector('header');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    header.classList.add('shadow-md');
+                } else {
+                    header.classList.remove('shadow-md');
+                }
+            });
+
+            // Active state simulation
+            const navItems = document.querySelectorAll('nav > div');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(i => {
+                        i.classList.remove('text-primary', 'dark:text-primary-fixed', 'font-bold');
+                        i.classList.add('text-on-surface-variant', 'dark:text-outline-variant');
+                        const icon = i.querySelector('.material-symbols-outlined');
+                        if (icon) icon.style.fontVariationSettings = "'FILL' 0";
+                    });
+                    item.classList.add('text-primary', 'dark:text-primary-fixed', 'font-bold');
+                    item.classList.remove('text-on-surface-variant', 'dark:text-outline-variant');
+                    const icon = item.querySelector('.material-symbols-outlined');
+                    if (icon) icon.style.fontVariationSettings = "'FILL' 1";
+                });
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MobileHub | Product Details</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .spec-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .spec-card:active {
+            transform: scale(0.98);
+        }
+    </style>
+
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#90a8ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "status-error": "#EF4444",
+                        "border-subtle": "#E5E7EB",
+                        "surface-variant": "#e1e3e4",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-secondary-container": "#596373",
+                        "on-surface": "#191c1d",
+                        "inverse-surface": "#2e3132",
+                        "on-background": "#191c1d",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "secondary-container": "#d6e0f3",
+                        "on-tertiary-container": "#f39461",
+                        "on-secondary-fixed": "#121c2a",
+                        "tertiary": "#4b1c00",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcb",
+                        "surface": "#f8f9fa",
+                        "outline-variant": "#c5c5d3",
+                        "on-surface-variant": "#444651",
+                        "tertiary-fixed-dim": "#ffb691",
+                        "status-success": "#10B981",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#264191",
+                        "background": "#f8f9fa",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#1e3a8a",
+                        "inverse-primary": "#b6c4ff",
+                        "outline": "#757682",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed": "#d9e3f6",
+                        "on-primary": "#ffffff",
+                        "secondary": "#555f6f",
+                        "surface-tint": "#4059aa",
+                        "on-tertiary-fixed-variant": "#773205",
+                        "tertiary-container": "#6e2c00",
+                        "status-warning": "#F59E0B",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00164e",
+                        "secondary-fixed-dim": "#bdc7d9",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#341100",
+                        "primary": "#00236f",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-white": "#FFFFFF",
+                        "on-secondary-fixed-variant": "#3d4756",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "primary-fixed": "#dce1ff",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "container-max": "1280px",
+                        "gutter-desktop": "24px",
+                        "margin-mobile": "20px",
+                        "gutter-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "data-tabular": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-tabular": ["13px", {"lineHeight": "18px", "fontWeight":

@@ -1,0 +1,204 @@
+"""
+Django settings for the MobileHub backend.
+
+Production deployment should override the .env values with proper secrets
+and switch USE_SQLITE=False (with DATABASE_URL set to PostgreSQL).
+"""
+
+from datetime import timedelta
+from pathlib import Path
+
+from decouple import Csv, config
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# --- Core ---------------------------------------------------------------------
+SECRET_KEY = config("SECRET_KEY", default="dev-insecure-secret-key")
+DEBUG = config("DEBUG", default=False, cast=bool)
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+
+# --- Apps ---------------------------------------------------------------------
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # third-party
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
+    "corsheaders",
+    "django_filters",
+    # local
+    "apps.accounts",
+    "apps.products",
+    "apps.orders",
+    "apps.recommendations",
+    "apps.dashboard",
+    "apps.comparison",
+]
+
+# --- App init -----------------------------------------------------------------
+import logging
+
+_logger = logging.getLogger("mobilehub.config")
+
+MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "config.wsgi.application"
+
+# --- Database -----------------------------------------------------------------
+USE_SQLITE = config("USE_SQLITE", default=True, cast=bool)
+if USE_SQLITE:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config("DB_NAME", default="mobilehub"),
+            "USER": config("DB_USER", default="mobilehub_user"),
+            "PASSWORD": config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", default="5432"),
+        }
+    }
+
+# --- Auth ---------------------------------------------------------------------
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
+# --- I18N ---------------------------------------------------------------------
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_TZ = True
+
+# --- Static / Media -----------------------------------------------------------
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- DRF ----------------------------------------------------------------------
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.AllowAny",
+    ),
+    "DEFAULT_FILTER_BACKENDS": (
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+    ),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# --- CORS ---------------------------------------------------------------------
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:5173,http://127.0.0.1:5173",
+    cast=Csv(),
+)
+CORS_ALLOW_CREDENTIALS = True
+
+# --- MobileHub ----------------------------------------------------------------
+YOUTUBE_API_KEY = config("YOUTUBE_API_KEY", default="")
+
+# --- Frontend / SPA -----------------------------------------------------------
+# Used by the password-reset email so the link opens our SPA reset page, not
+# the Django admin password-reset template.
+FRONTEND_BASE_URL = config(
+    "FRONTEND_BASE_URL", default="http://127.0.0.1:5173"
+)
+
+# --- Email --------------------------------------------------------------------
+# Set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend and fill in
+# EMAIL_HOST_USER + EMAIL_HOST_PASSWORD with a Gmail account + *App Password*
+# (https://myaccount.google.com/apppasswords — account passwords don't work).
+# If SMTP isn't configured, we fall back to the console backend so the reset
+# link is printed to the runserver log instead of going to a real inbox.
+_raw_email_backend = config(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+# Accept a friendly alias "gmail" — it's the most common case.
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if _raw_email_backend.lower() == "gmail"
+    else _raw_email_backend
+)
+EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
+EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL",
+    default=EMAIL_HOST_USER or "no-reply@mobilehub.local",
+)
+
+# --- Email sanity check ------------------------------------------------------
+# Surface a loud, actionable warning at startup if SMTP is selected but
+# credentials are missing. This is the most common cause of "the email just
+# doesn't arrive" reports, and otherwise it fails silently in the request
+# handler.
+if (
+    "smtp" in EMAIL_BACKEND.lower()
+    and not (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+):
+    _logger.warning(
+        "EMAIL_BACKEND=%s but EMAIL_HOST_USER/EMAIL_HOST_PASSWORD are not set. "
+        "Password-reset emails will fail to send. Add them to backend/.env "
+        "(use a Gmail *App Password* — https://myaccount.google.com/apppasswords).",
+        EMAIL_BACKEND,
+    )

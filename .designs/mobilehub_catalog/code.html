@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MobileHub | Catalog</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-pill {
+            background-color: #00236f;
+            color: #ffffff;
+        }
+        /* Custom scrollbar for horizontal filter bar */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#90a8ff",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "status-error": "#EF4444",
+                        "border-subtle": "#E5E7EB",
+                        "surface-variant": "#e1e3e4",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e3e4",
+                        "on-secondary-container": "#596373",
+                        "on-surface": "#191c1d",
+                        "inverse-surface": "#2e3132",
+                        "on-background": "#191c1d",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "secondary-container": "#d6e0f3",
+                        "on-tertiary-container": "#f39461",
+                        "on-secondary-fixed": "#121c2a",
+                        "tertiary": "#4b1c00",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffdbcb",
+                        "surface": "#f8f9fa",
+                        "outline-variant": "#c5c5d3",
+                        "on-surface-variant": "#444651",
+                        "tertiary-fixed-dim": "#ffb691",
+                        "status-success": "#10B981",
+                        "error-container": "#ffdad6",
+                        "on-primary-fixed-variant": "#264191",
+                        "background": "#f8f9fa",
+                        "surface-bright": "#f8f9fa",
+                        "primary-container": "#1e3a8a",
+                        "inverse-primary": "#b6c4ff",
+                        "outline": "#757682",
+                        "surface-container-low": "#f3f4f5",
+                        "secondary-fixed": "#d9e3f6",
+                        "on-primary": "#ffffff",
+                        "secondary": "#555f6f",
+                        "surface-tint": "#4059aa",
+                        "on-tertiary-fixed-variant": "#773205",
+                        "tertiary-container": "#6e2c00",
+                        "status-warning": "#F59E0B",
+                        "surface-container": "#edeeef",
+                        "on-primary-fixed": "#00164e",
+                        "secondary-fixed-dim": "#bdc7d9",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed": "#341100",
+                        "primary": "#00236f",
+                        "surface-container-high": "#e7e8e9",
+                        "surface-white": "#FFFFFF",
+                        "on-secondary-fixed-variant": "#3d4756",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "primary-fixed": "#dce1ff",
+                        "error": "#ba1a1a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "base-unit": "4px",
+                        "container-max": "1280px",
+                        "gutter-desktop": "24px",
+                        "margin-mobile": "20px",
+                        "gutter-mobile": "16px",
+                        "margin-desktop": "40px"
+                    },
+                    "fontFamily": {
+                        "data-tabular": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-tabular": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "display-lg-mobile": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md text-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16 bg-surface-white shadow-sm transition-all duration-300" id="top-nav">
+<div class="flex items-center gap-4">
+<button class="text-primary active:scale-95 duration-100">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="text-headline-md font-headline-md font-bold text-primary">MobileHub</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="text-primary active:scale-95 duration-100">
+<span class="material-symbols-outlined">shopping_cart</span>
+</button>
+</div>
+</header>
+<main class="pt-20 pb-24 px-margin-mobile max-w-md mx-auto">
+<!-- Filter Bar -->
+<section class="mb-8">
+<div class="flex items-center justify-between mb-4">
+<h2 class="text-label-md font-label-md uppercase tracking-wider text-on-surface-variant">Filters</h2>
+<button class="text-primary text-label-md font-label-md">Clear All</button>
+</div>
+<div class="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+<button class="flex items-center gap-1 px-4 py-2 bg-surface-container rounded-full text-label-md font-label-md whitespace-nowrap active:scale-95 transition-transform">
+                    Brand <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-1 px-4 py-2 bg-surface-container rounded-full text-label-md font-label-md whitespace-nowrap active:scale-95 transition-transform">
+                    Price <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-1 px-4 py-2 bg-surface-container rounded-full text-label-md font-label-md whitespace-nowrap active:scale-95 transition-transform">
+                    RAM <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+<button class="flex items-center gap-1 px-4 py-2 bg-surface-container rounded-full text-label-md font-label-md whitespace-nowrap active:scale-95 transition-transform">
+                    5G <span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+</div>
+</section>
+<!-- AI Recommendations (Bento Style) -->
+<section class="mb-10">
+<h2 class="text-headline-md font-headline-md mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                AI Picks
+            </h2>
+<div class="grid grid-cols-2 gap-3 h-64">
+<div class="col-span-1 row-span-2 relative rounded-xl overflow-hidden shadow-sm group">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="A professional studio photograph of a sleek, dark titanium flagship smartphone with a triple-lens camera array, set against a dramatic, high-contrast dark background with blue rim lighting. The lighting is precise, highlighting the metallic texture and technical excellence of the device in a modern tech-commerce style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBswZH2CcgVqychCcZhPDyWdoziNa3ruSd_5A4a0VQtP8dk2m0UWFY_vQPozFInHmG7Qf0ZBgAFdhuBTlfYGED-eB7SKFqiuJC8Ob1RcgXxZV8lJSCPTv5y_6PVOqbckaqBDquUy1LhNd-C3xE1rFoSZsi0uTq7_bhB9JdxCrx9a67Ti54mFWj5ZrUunxwP-IYtfLrAJlgUbEIUFCf5Y5gdOEQnF0wJsf1uw3-xG0WMvBtr2wqsR5b3xeD8b-tI7w8OYXLD_r7rWfE')"></div>
+<div class="absolute bottom-3 left-3 z-20 text-white">
+<p class="text-label-md font-label-md text-on-primary-container">Best for Gaming</p>
+<h3 class="text-body-lg font-bold leading-tight">Titan X Pro</h3>
+</div>
+</div>
+<div class="col-span-1 relative rounded-xl overflow-hidden shadow-sm group">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="A vibrant, high-fidelity close-up image of a smartphone display showing a colorful, high-definition digital artwork. The device has ultra-thin bezels and is positioned angled in a bright, clean white studio setting with soft neutral shadows, emphasizing a premium minimalist hardware aesthetic with deep blue brand accents." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAg5cWKxh-DXeZFTTrEXSWbrCU_NVuwv8ll7NJnt7Npb9hX1jvPVTxEapsCL2BSyi-QUYVkJ6WIQOll2A82YWn1Au-svSv05GiQIIpy2RyNFAK4pog8w-fu7cmjy-V1U85yutRDLlXWQOJlqyKjOzTaLuvUn2SZ_Ik3m4PQrzsLX3wdr-x0bafBHKYh4rp0hjKsQjjGKSLd_8VVPTyl38jI9w5mGoimyLsb_70fogPiOwJewPa0-DYUh8CvOWx2YCqOIqUlZNkLlwo')"></div>
+<div class="absolute bottom-3 left-3 z-20 text-white">
+<p class="text-label-md font-label-md text-on-primary-container">Best Camera</p>
+<h3 class="text-body-md font-bold">Vision S24</h3>
+</div>
+</div>
+<div class="col-span-1 relative rounded-xl overflow-hidden shadow-sm group">
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-10"></div>
+<div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110" data-alt="Two modern, colorful mid-range smartphones leaning against each other on a soft-textured gray surface. The lighting is bright and even, highlighting the clean industrial design and matte finishes of the devices. The overall atmosphere is professional, approachable, and high-trust, consistent with a technical authority brand." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuChPL5x4b-kGDRRhUYzaRIicYLiXAofO0LyT_HoKY5YC0ce3aolReeyWIhYnZf2Jz1q2tlaEohBE6X8vyr6yxzxupmAnw82XsHMQnsA1hdyKMXbCsEAKDb_FHybj33wypTStmQ3u97XDr6SKy8YEF_MXvzozkpWxN8FVc5dfCRB_MBr_Z2luHRy7ghyHNq0psIStxF_dZjAv8x4gbhYihkcx4TThvD6yJGB0NR0jdQInIIni7mmtv__o2GFUTA3AcKmXBOxvopxKnw')"></div>
+<div class="absolute bottom-3 left-3 z-20 text-white">
+<p class="text-label-md font-label-md text-on-primary-container">Best Value</p>
+<h3 class="text-body-md font-bold">Neo Lite</h3>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Grid -->
+<section class="mb-12">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-headline-md font-headline-md">Catalog</h2>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="text-label-md font-label-md">Sort by</span>
+<span class="material-symbols-outlined text-[20px]">sort</span>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<!-- Product Card 1 -->
+<div class="bg-surface-white rounded-xl shadow-sm overflow-hidden flex flex-col group border border-border-subtle/50">
+<div class="relative h-56 bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-contain p-8 group-hover:scale-105 transition-transform duration-300" data-alt="A front and back view of a minimalist white smartphone with a dual-camera setup, floating against a clean light gray background with subtle geometric shadows. The image is rendered in a high-key lighting style with crisp details and a sophisticated, professional technical aesthetic characteristic of premium hardware brands." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5XyHdG_76Jtb_MRQIecsN2XZzaUWe4811wU7wVvLuuPfj9wdmoWsdEJC4JhfIK3XZrZf5IBo9DGXXFpH-RgLIfHZ3fEurK8S1BXUZC1DS8T54ueSR2X0TkCSPUQEhBtqOnr4sH6kmlLUQxdEiTisbi8ojrOiexfF8wY2e-Opx5eGRLuda5gADond2FSMOVzAsCESQTUIwCR3jRZzQepmgMi00SIMKjNDcmQRXhxVoIwvwuCgEG2rowgzfQvM0CDZXW6EGFWpfwe0"/>
+<button class="absolute top-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-body-lg font-bold text-primary">Pixel Flow X1</h3>
+<p class="text-label-md font-label-md text-on-surface-variant">8GB RAM | 256GB | 5G</p>
+</div>
+<div class="flex items-center gap-1 bg-secondary-container px-2 py-1 rounded text-on-secondary-container">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-data-tabular font-data-tabular">4.8</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-4">
+<span class="text-headline-md font-headline-md text-primary">$799</span>
+<button class="bg-primary text-white px-4 py-2 rounded-xl text-label-md font-label-md flex items-center gap-2 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+                                Add
+                            </button>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-white rounded-xl shadow-sm overflow-hidden flex flex-col group border border-border-subtle/50">
+<div class="relative h-56 bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-contain p-8 group-hover:scale-105 transition-transform duration-300" data-alt="A high-tech foldable smartphone in its partially open state, showcasing a seamless inner screen with vibrant abstract wallpapers. The device is set against a monochromatic dark blue background with elegant soft-box lighting that accentuates the hinge mechanism and premium glass finish, conveying a sense of technical authority and luxury." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1JUII2UiGBKbvyX_ym5O_S6sQ-GkkgVaG65ZuF4GXGx4HwFWY6xjmh5FaOuuOHPsPPfyjJloVezHcA73l0sWPErvzTkTnctXyPm9YRKt04JXXqHZeDw3IFF3NPTa2AMGTDe8RAM2ubFymVIEcyw-Bvh_ddb1kGx1kvlcC1QrXv9IzU2j7L7PyNJFsf9Y4ekdKd1Bp6-RDhiCdAsENrosthUVJsYbY5CscnWKjTFuQxAsax89OioHlKGbttOAamCOqqNqqxSuq_jA"/>
+<button class="absolute top-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-body-lg font-bold text-primary">Zenith Fold 3</h3>
+<p class="text-label-md font-label-md text-on-surface-variant">12GB RAM | 512GB | 5G</p>
+</div>
+<div class="flex items-center gap-1 bg-secondary-container px-2 py-1 rounded text-on-secondary-container">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-data-tabular font-data-tabular">4.9</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-4">
+<span class="text-headline-md font-headline-md text-primary">$1,499</span>
+<button class="bg-primary text-white px-4 py-2 rounded-xl text-label-md font-label-md flex items-center gap-2 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+                                Add
+                            </button>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-white rounded-xl shadow-sm overflow-hidden flex flex-col group border border-border-subtle/50">
+<div class="relative h-56 bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-contain p-8 group-hover:scale-105 transition-transform duration-300" data-alt="A slim, modern mobile phone with an emerald green brushed metal back, highlighting a sophisticated quad-camera layout. The phone is placed on a clean white surface with sharp, artistic shadows cast by unseen tropical leaves, creating a high-trust, premium lifestyle hardware aesthetic with deep blue accents in the overall composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMW79AT7YQN6w4CupDdKuDhU3ElEyWeHuGd2uEr_-iGZ9hcV4PGWDJP0ctx3tWgmnz_HVOADgIOalVI4wwbHBpSkj5eKRrV8dIwwJQmlvo8S32FQ5lO_gr_qejGnE84PRpCefZM7787dQzHxVfziLfpJ6N3oH0xZJHB4xWb-c1LHR6VhQZ93dw1ceUPNS7SJoUfN4DTQyufJUd-DmuK9lExWV_ByOZEL_AGl2EVujFZvFdBguKg3tfCT7uZwT0eDRJo8QzyG7ObKA"/>
+<button class="absolute top-3 right-3 w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined">favorite</span>
+</button>
+</div>
+<div class="p-5">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h3 class="text-body-lg font-bold text-primary">Optic Flare Z</h3>
+<p class="text-label-md font-label-md text-on-surface-variant">6GB RAM | 128GB | LTE</p>
+</div>
+<div class="flex items-center gap-1 bg-secondary-container px-2 py-1 rounded text-on-secondary-container">
+<span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-data-tabular font-data-tabular">4.5</span>
+</div>
+</div>
+<div class="flex items-center justify-between mt-4">
+<span class="text-headline-md font-headline-md text-primary">$349</span>
+<button class="bg-primary text-white px-4 py-2 rounded-xl text-label-md font-label-md flex items-center gap-2 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-[18px]">add_shopping_cart</span>
+                                Add
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Technical Specification Hint -->
+<section class="bg-primary text-white p-6 rounded-2xl mb-12 shadow-lg relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+<div class="relative z-10">
+<h3 class="text-headline-md font-headline-md mb-2">Expert Comparison</h3>
+<p class="text-on-primary-container text-label-md font-label-md mb-4">Unsure which model fits your workflow? Compare up to 3 devices side-by-side.</p>
+<button class="w-full bg-white text-primary py-3 rounded-xl font-bold active:scale-95 transition-transform">Launch Comparison Tool</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 flex justify-around items-center px-4 py-2 bg-surface-white rounded-t-xl shadow-[0px_-4px_20px_rgba(0,0,0,0.05)]">
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform">
+<span class="material-symbols-outlined">home</span>
+<span class="text-label-md font-label-md">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed font-bold active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<span class="text-label-md font-label-md">Catalog</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform">
+<span class="material-symbols-outlined">shopping_bag</span>
+<span class="text-label-md font-label-md">Cart</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant active:scale-90 transition-transform">
+<span class="material-symbols-outlined">person</span>
+<span class="text-label-md font-label-md">Account</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions and scroll handling
+        let lastScroll = 0;
+        const topNav = document.getElementById('top-nav');
+
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            
+            // Subtle shadow increase on scroll
+            if (currentScroll > 10) {
+                topNav.classList.add('shadow-md');
+                topNav.classList.remove('shadow-sm');
+            } else {
+                topNav.classList.add('shadow-sm');
+                topNav.classList.remove('shadow-md');
+            }
+
+            lastScroll = currentScroll;
+        });
+
+        // Add to cart feedback simple logic
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.innerText.includes('Add')) {
+                btn.addEventListener('click', function() {
+                    const originalContent = this.innerHTML;
+                    this.innerHTML = '<span class="material-symbols-outlined text-[18px]">check</span> Added';
+                    this.classList.replace('bg-primary', 'bg-status-success');
+                    setTimeout(() => {
+                        this.innerHTML = originalContent;
+                        this.classList.replace('bg-status-success', 'bg-primary');
+                    }, 2000);
+                });
+            }
+        });
+    </script>
+</body></html>
