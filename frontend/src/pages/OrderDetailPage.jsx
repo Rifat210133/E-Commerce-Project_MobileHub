@@ -308,6 +308,29 @@ export default function OrderDetailPage() {
   const [video, setVideo] = useState(null);
   const [policy, setPolicy] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [confirmingReceived, setConfirmingReceived] = useState(false);
+  const pushToast = useUIStore((s) => s.pushToast);
+
+  const confirmReceived = async () => {
+    if (confirmingReceived) return;
+    setConfirmingReceived(true);
+    try {
+      const updated = await ordersApi.confirmReceived(orderNumber);
+      setOrder(updated);
+      pushToast({
+        message: "Thanks! Your order has been marked as received.",
+        variant: "success",
+      });
+    } catch (err) {
+      const detail =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Could not confirm receipt. Please try again.";
+      pushToast({ message: detail, variant: "danger" });
+    } finally {
+      setConfirmingReceived(false);
+    }
+  };
 
   const fetchAll = () => {
     ordersApi.getOrder(orderNumber).then(setOrder);
@@ -498,6 +521,53 @@ export default function OrderDetailPage() {
                 </div>
               </dl>
             </div>
+
+          {order.status === "Delivered" && (
+            <div className="card p-5 bg-emerald-50 border border-emerald-200">
+              <div className="flex items-start gap-3">
+                <Icon name="task_alt" className="text-emerald-600 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-title-md text-ink">Have you received it?</h3>
+                  <p className="text-body-md text-ink-muted mt-1">
+                    Confirm receipt so we can close out your delivery. The
+                    return window stays open for the same period regardless.
+                  </p>
+                  <button
+                    onClick={confirmReceived}
+                    disabled={confirmingReceived}
+                    className="btn-primary !py-2 !px-4 mt-3 disabled:opacity-60"
+                  >
+                    {confirmingReceived ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner size="xs" /> Confirming…
+                      </span>
+                    ) : (
+                      <>
+                        <Icon name="check_circle" size={16} className="-ml-1 mr-1.5" />
+                        Yes, I received my order
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {order.status === "Received" && (
+            <div className="card p-5 bg-emerald-50 border border-emerald-200">
+              <div className="flex items-start gap-3">
+                <Icon name="verified" className="text-emerald-600 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-title-md text-ink">Delivery complete</h3>
+                  <p className="text-body-md text-ink-muted mt-1">
+                    You confirmed receipt on{" "}
+                    {fmt.dateLong(order.received_at)}. Thanks for shopping
+                    with MobileHub!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {eligibility.eligible ? (
             <div className="card p-5 bg-surface border border-line">

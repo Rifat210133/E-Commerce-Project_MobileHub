@@ -15,6 +15,11 @@ urlpatterns = [
     path("orders/checkout/", views.checkout, name="checkout"),
     path("orders/", views.order_list, name="order-list"),
     path("orders/<str:order_number>/", views.order_detail, name="order-detail"),
+    path(
+        "orders/<str:order_number>/confirm-received/",
+        views.confirm_received,
+        name="order-confirm-received",
+    ),
     # Returns (customer-facing)
     path("returns/", views.my_returns, name="my-returns"),
     path(

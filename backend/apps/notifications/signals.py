@@ -180,6 +180,7 @@ def notify_on_order_event(sender, instance, created, **kwargs):
         ("Confirmed", "Processing"),
         ("Processing", "Shipped"),
         ("Shipped", "Delivered"),
+        ("Delivered", "Received"),
         ("Pending", "Cancelled"),
         ("Confirmed", "Cancelled"),
         ("Processing", "Cancelled"),
@@ -200,3 +201,20 @@ def notify_on_order_event(sender, instance, created, **kwargs):
         body=body,
         meta={"from_status": prev_status, "to_status": order.status},
     )
+
+    # The (Delivered -> Received) transition is unique: it's driven by
+    # the customer themselves, so we also push an admin notification
+    # so the support / fulfillment team sees the buyer has confirmed
+    # the package arrived (closes out the delivery loop).
+    if (prev_status, order.status) == ("Delivered", "Received"):
+        _emit_admins(
+            kind="order_received",
+            level="success",
+            title=f"Order #{order.order_number} confirmed received by customer",
+            body=(
+                f"{customer or 'The customer'} confirmed receipt of "
+                f"#{order.order_number}. Order is now closed."
+            ),
+            order=order,
+            meta={"from_status": prev_status, "to_status": order.status},
+        )

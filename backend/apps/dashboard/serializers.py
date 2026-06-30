@@ -27,6 +27,8 @@ class AdminOrderSerializer(serializers.ModelSerializer):
             "paid_via",
             "is_paid",
             "estimated_arrival",
+            "delivered_at",
+            "received_at",
             "created_at",
             "updated_at",
         )

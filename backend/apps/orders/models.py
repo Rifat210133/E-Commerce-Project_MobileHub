@@ -49,6 +49,7 @@ class Order(models.Model):
         ("Processing", "Processing"),
         ("Shipped", "Shipped"),
         ("Delivered", "Delivered"),
+        ("Received", "Received"),
         ("Cancelled", "Cancelled"),
     )
 
@@ -72,6 +73,11 @@ class Order(models.Model):
     # deliveries don't have to immediately start the clock ticking from
     # checkout). Nullable so legacy / in-flight orders keep working.
     delivered_at = models.DateTimeField(null=True, blank=True)
+    # Set when the customer confirms receipt through the
+    # /orders/<n>/confirm-received/ endpoint. Final terminal state —
+    # from here the order is closed (returns still allowed inside the
+    # policy window via the return-request flow).
+    received_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

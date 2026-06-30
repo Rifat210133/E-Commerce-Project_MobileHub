@@ -255,6 +255,13 @@ def admin_order_status(request, order_id: int):
     order.status = new_status
     if note is not None:
         order.status_notes = note
+    # Auto-stamp delivered_at the first time an order moves into Delivered.
+    # The customer-side confirm-received flow depends on this timestamp to
+    # anchor the return window. We only stamp on the transition (not when
+    # admin re-saves a Delivered order with a note update), so the value
+    # always reflects the actual delivery moment.
+    if new_status == "Delivered" and order.delivered_at is None:
+        order.delivered_at = timezone.now()
     order.save()
     return Response(AdminOrderSerializer(order).data)
 

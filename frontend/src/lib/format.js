@@ -52,6 +52,7 @@ export const statusColor = (status) => {
   const s = (status || "").toLowerCase();
   if (s === "shipped" || s === "out_for_delivery") return "info";
   if (s === "cancelled" || s === "returned") return "danger";
+  if (s === "received") return "success";
   return "primary"; // pending, confirmed, processing, delivered
 };
 
@@ -63,6 +64,7 @@ export const statusLabel = (status) => {
     shipped: "Shipped",
     out_for_delivery: "Out for delivery",
     delivered: "Delivered",
+    received: "Received",
     cancelled: "Cancelled",
     returned: "Returned",
   };

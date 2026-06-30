@@ -211,6 +211,43 @@ def order_detail(request, order_number: str):
     return Response(OrderSerializer(order).data)
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def confirm_received(request, order_number: str):
+    """Customer-driven transition from ``Delivered`` to ``Received``.
+
+    Marks the order as received by the buyer, stamps ``received_at`` and
+    fires a customer-facing confirmation + admin notification via the
+    notifications signal pipeline. Refused for any state other than
+    ``Delivered`` (so the button cannot double-fire or skip ahead).
+    """
+    order = get_object_or_404(Order, order_number=order_number, user=request.user)
+    if order.status != "Delivered":
+        return Response(
+            {
+                "detail": (
+                    f"Only delivered orders can be confirmed as received "
+                    f"(current status: '{order.status}')."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # Customer-side comment (e.g. "package was opened", "all good") is
+    # optional. We store it in status_notes so the admin dashboard can
+    # surface it alongside the Received status.
+    note = (request.data.get("note") or "").strip()
+    order.status = "Received"
+    order.received_at = timezone.now()
+    if note:
+        order.status_notes = note
+    # save() triggers the post_save signal which emits the customer +
+    # admin notification rows.
+    order.save()
+
+    return Response(OrderSerializer(order).data)
+
+
 # ---------------------------------------------------------------------------
 # Wishlist endpoints
 # ---------------------------------------------------------------------------

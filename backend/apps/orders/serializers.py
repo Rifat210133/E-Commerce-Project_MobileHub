@@ -98,6 +98,8 @@ class OrderSerializer(serializers.ModelSerializer):
             "is_paid",
             "estimated_arrival",
             "status_notes",
+            "delivered_at",
+            "received_at",
             "created_at",
             "updated_at",
         )

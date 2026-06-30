@@ -53,6 +53,10 @@ export const ordersApi = {
   listOrders: () => api.get("/orders/").then((r) => r.data),
   getOrder: (orderNumber) =>
     api.get(`/orders/${orderNumber}/`).then((r) => r.data),
+  confirmReceived: (orderNumber, note) =>
+    api
+      .post(`/orders/${orderNumber}/confirm-received/`, { note: note || "" })
+      .then((r) => r.data),
 
   getWishlist: () => api.get("/wishlist/").then((r) => r.data),
   addWishlist: (productId) =>
