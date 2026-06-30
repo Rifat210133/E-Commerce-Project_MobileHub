@@ -105,6 +105,11 @@ export default function FilterVideoCard({
           <div className="flex gap-3 overflow-x-auto no-scrollbar">
             {list.map((v) => {
               const isActive = v.videoId === activeId;
+              // Use flex-1 (with a sensible min-width) so the 4 (or fewer)
+              // cards always fill the full row width. Without this the
+              // strip left empty space on the right whenever the page is
+              // wider than 4 × 200px. On very narrow screens the min-width
+              // keeps each thumbnail readable.
               return (
                 <button
                   key={v.videoId}
@@ -113,7 +118,7 @@ export default function FilterVideoCard({
                     setActiveId(v.videoId);
                     setAutoplay(true);
                   }}
-                  className={`group min-w-[200px] max-w-[200px] text-left rounded-lg overflow-hidden border transition-all ${
+                  className={`group flex-1 min-w-[180px] text-left rounded-lg overflow-hidden border transition-all ${
                     isActive
                       ? "border-primary ring-2 ring-primary/40"
                       : "border-surface-border hover:border-primary/60"
