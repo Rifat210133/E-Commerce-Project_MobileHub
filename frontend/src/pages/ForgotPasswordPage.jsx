@@ -58,7 +58,8 @@ export default function ForgotPasswordPage() {
           detail || "We couldn't process that email. Please try again.";
       }
       setError(finalMsg);
-      notify(finalMsg, "error");
+      // The same message is already shown inline under the email input
+      // (role="alert"), so don't duplicate it in the corner toast.
     } finally {
       setBusy(false);
     }
