@@ -110,7 +110,17 @@ export default function NotificationBell() {
             {notifications.map((n) => {
               const icon = KIND_ICON[n.kind] || "notifications";
               const tone = LEVEL_STYLE[n.level] || LEVEL_STYLE.info;
-              const target = n.order ? `/admin/orders` : null;
+              // Decide where the "View" link should land. Return-related
+              // notifications always go to the returns queue (the order is
+              // still attached for display, but the admin's primary action
+              // is reviewing the return itself).
+              const isReturnKind =
+                typeof n.kind === "string" && n.kind.startsWith("return");
+              const target = isReturnKind
+                ? "/admin/returns"
+                : n.order
+                  ? `/admin/orders`
+                  : null;
               return (
                 <div
                   key={n.id}
