@@ -171,6 +171,12 @@ class ProductDetailSerializer(ProductListSerializer):
     spec = ProductSpecSerializer(read_only=True)
     rating_breakdown = ProductRatingSerializer(read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
+    # Override the raw JSONFields so we can normalize variant / storage prices
+    # to the same scale as `product.price` (BDT). Some legacy seed rows stored
+    # variant price as product.price / 100, which made the detail page show
+    # e.g. "499TK" while the catalog card correctly showed "49,900TK".
+    variants = serializers.SerializerMethodField()
+    storage_options = serializers.SerializerMethodField()
 
     class Meta(ProductListSerializer.Meta):
         fields = ProductListSerializer.Meta.fields + (
@@ -188,6 +194,48 @@ class ProductDetailSerializer(ProductListSerializer):
             "rating_breakdown",
             "reviews",
         )
+
+    @staticmethod
+    def _scale_price(value, product_price):
+        """Bring a variant / storage price up to the same scale as
+        `product.price` if it looks suspiciously small.
+
+        Returns the value unchanged when it cannot be normalized safely,
+        so callers always get a usable number.
+        """
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return value
+        if v <= 0:
+            return value
+        # If the variant is ~1/100th of the product price, the seed stored
+        # it on a smaller scale — bring it up to match.
+        try:
+            pp = float(product_price)
+        except (TypeError, ValueError):
+            return value
+        if pp > 0 and 0.005 < v / pp < 0.05:
+            return v * 100
+        return v
+
+    def get_variants(self, obj: Product):
+        out = []
+        for v in obj.variants or []:
+            row = dict(v)
+            if "price" in row:
+                row["price"] = self._scale_price(row.get("price"), obj.price)
+            out.append(row)
+        return out
+
+    def get_storage_options(self, obj: Product):
+        out = []
+        for s in obj.storage_options or []:
+            row = dict(s)
+            if "price_delta" in row:
+                row["price_delta"] = self._scale_price(row.get("price_delta"), obj.price)
+            out.append(row)
+        return out
 
 
 # --------------------------------------------------------------------------- #
