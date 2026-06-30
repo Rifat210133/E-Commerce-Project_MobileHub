@@ -28,16 +28,31 @@ const KIND_ICON = {
   order_placed: "shopping_bag",
   order_paid: "payments",
   order_status: "local_shipping",
+  return_approved: "thumb_up",
+  return_rejected: "block",
+  return_refunded: "verified",
+  return_requested: "undo",
   low_stock: "warning",
 };
 
 function statusTarget(notif) {
-  // Customer notifications about an order link to that order's detail page
-  // (when we have an order_number). The backend writes the order FK as a
-  // numeric id, so we surface "View order" with a generic orders-route that
-  // opens the latest unread with an order context.
-  if (notif.kind === "order_placed" || notif.kind === "order_paid" || notif.kind === "order_status") {
-    return "/orders";
+  // Order-lifecycle notifications (order_placed / order_paid /
+  // order_status / order_received etc.) link to that order's detail
+  // page. We pull the order_number from the notification's meta when
+  // available so the customer lands directly on the relevant order;
+  // otherwise we fall back to the orders list.
+  if (typeof notif.kind === "string" && notif.kind.startsWith("order")) {
+    const orderNumber =
+      notif?.meta?.order_number || notif?.order_number;
+    return orderNumber ? `/orders/${orderNumber}` : "/orders";
+  }
+  // Return-lifecycle notifications (return_approved / return_rejected /
+  // return_refunded / return_requested) link to the customer's returns
+  // page. When the meta carries a return_id we deep-link with ?id=<id>
+  // so the returns page can highlight the matching row.
+  if (typeof notif.kind === "string" && notif.kind.startsWith("return")) {
+    const rid = notif?.meta?.return_id ?? notif?.return_id;
+    return rid ? `/returns?id=${rid}` : "/returns";
   }
   return null;
 }
@@ -124,6 +139,15 @@ export default function UserNotificationBell() {
               const icon = KIND_ICON[n.kind] || "notifications";
               const tone = LEVEL_STYLE[n.level] || LEVEL_STYLE.info;
               const target = statusTarget(n);
+              const isReturn =
+                typeof n.kind === "string" && n.kind.startsWith("return");
+              const isOrder =
+                typeof n.kind === "string" && n.kind.startsWith("order");
+              const ctaLabel = isReturn
+                ? "View return"
+                : isOrder
+                  ? "View order"
+                  : "View";
               return (
                 <div
                   key={n.id}
@@ -156,7 +180,7 @@ export default function UserNotificationBell() {
                           }}
                           className="text-label-sm text-primary hover:underline"
                         >
-                          View order
+                          {ctaLabel}
                         </Link>
                       )}
                       {!n.is_read && (

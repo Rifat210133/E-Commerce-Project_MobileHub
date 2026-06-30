@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { returnsApi } from "../api";
 import Spinner from "../components/Spinner";
 import EmptyState from "../components/EmptyState";
@@ -38,7 +38,7 @@ function ReturnStatusBadge({ status }) {
   );
 }
 
-function ReturnRow({ r }) {
+function ReturnRow({ r, highlight }) {
   const itemsSummary = (r.items || [])
     .slice(0, 3)
     .map((it) => `${it.quantity_returned} × ${it.product_name}`)
@@ -47,7 +47,10 @@ function ReturnRow({ r }) {
   return (
     <Link
       to={`/orders/${r.order_number}`}
-      className="card card-hover p-5 flex items-center gap-4"
+      data-return-id={r.id}
+      className={`card card-hover p-5 flex items-center gap-4 ${
+        highlight ? "ring-2 ring-primary/60 bg-primary/5" : ""
+      }`}
     >
       <div className="w-12 h-12 rounded-full bg-primary-50 text-primary flex items-center justify-center">
         <Icon name="undo" size={24} />
@@ -78,9 +81,24 @@ function ReturnRow({ r }) {
 export default function ReturnsPage() {
   const [returns, setReturns] = useState(null);
 
+  // Honor ?id=<return_id> from a notification deep-link: once the list
+  // is loaded, find the matching row and scroll it into view.
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("id");
+  const highlightRowRef = useRef(null);
+
   useEffect(() => {
     returnsApi.listMine().then((d) => setReturns(d || []));
   }, []);
+
+  useEffect(() => {
+    if (!highlightId || !returns) return;
+    const node = document.querySelector(`[data-return-id="${highlightId}"]`);
+    if (node && typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [returns, highlightId]);
 
   if (returns === null) return <Spinner />;
 
@@ -116,7 +134,11 @@ export default function ReturnsPage() {
       ) : (
         <div className="space-y-3">
           {returns.map((r) => (
-            <ReturnRow key={r.id} r={r} />
+            <ReturnRow
+              key={r.id}
+              r={r}
+              highlight={highlightId && String(r.id) === String(highlightId)}
+            />
           ))}
         </div>
       )}
