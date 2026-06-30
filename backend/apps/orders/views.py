@@ -349,7 +349,10 @@ def order_returns(request, order_number: str):
         return Response(ReturnRequestSerializer(qs, many=True).data)
 
     # POST — create
-    if order.status != "Delivered":
+    # Returns are allowed for both "Delivered" and "Received" orders:
+    # the buyer's confirmation of receipt doesn't close the return window,
+    # it just marks the order as closed from the customer's side.
+    if order.status not in {"Delivered", "Received"}:
         return Response(
             {"detail": "Only delivered orders are eligible for return."},
             status=status.HTTP_400_BAD_REQUEST,

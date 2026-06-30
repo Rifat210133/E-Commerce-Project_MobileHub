@@ -362,7 +362,10 @@ export default function OrderDetailPage() {
 
   const eligibility = useMemo(() => {
     if (!order) return { eligible: false, reason: "" };
-    if (order.status !== "Delivered") {
+    // Both "Delivered" and "Received" orders are eligible for returns.
+    // Receipt confirmation just closes the customer's lifecycle; the
+    // return-policy window keeps ticking either way.
+    if (!["Delivered", "Received"].includes(order.status)) {
       return { eligible: false, reason: "Only delivered orders can be returned." };
     }
     if (!policy) {
@@ -597,7 +600,9 @@ export default function OrderDetailPage() {
               </div>
             </div>
           ) : (
-            ["processing", "shipped", "delivered"].includes(order.status) && (
+            ["processing", "shipped", "delivered", "received"].includes(
+              order.status
+            ) && (
               <div className="card p-5 bg-surface border border-line">
                 <div className="flex items-start gap-3">
                   <Icon name="undo" className="text-primary mt-0.5" />
