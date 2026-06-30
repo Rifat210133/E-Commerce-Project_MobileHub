@@ -13,6 +13,7 @@ const TONE_TO_CLASS = {
   info: "bg-accent-info/10 text-accent-info",
   success: "bg-accent-success/10 text-accent-success",
   gold: "bg-accent-gold/10 text-accent-gold",
+  danger: "bg-accent-danger/10 text-accent-danger",
 };
 
 // Backend `/api/admin/analytics/overview/` returns
@@ -26,6 +27,13 @@ function normalizeOverview(raw) {
   const orders = raw.total_orders ?? raw.orders ?? 0;
   const customers = raw.active_users ?? raw.customers ?? 0;
   const avgOrder = orders > 0 ? revenue / orders : raw.avg_order_value ?? 0;
+  // New refund fields. Older backends never returned these; fall back to 0.
+  // `total_refunded_30d` already matches what was subtracted from `revenue`,
+  // so we display the net total and surface the gross-vs-net split below it.
+  const refunded30 = Number(raw.total_refunded_30d ?? 0) || 0;
+  const refundedCount = Number(raw.refunded_requests_30d ?? 0) || 0;
+  const refundedCountDelta =
+    raw.refunded_requests_change_pct ?? raw.refunded_requests_delta ?? null;
   return {
     revenue,
     orders,
@@ -36,6 +44,10 @@ function normalizeOverview(raw) {
     customers_delta: raw.users_change_pct ?? raw.customers_delta ?? null,
     aov_delta: raw.aov_change_pct ?? raw.aov_delta ?? null,
     inventory_alerts: raw.inventory_alerts ?? 0,
+    total_refunded_30d: refunded30,
+    gross_revenue_30d: Number(raw.gross_revenue_30d ?? 0) || 0,
+    refunded_requests_30d: refundedCount,
+    refunded_requests_change_pct: refundedCountDelta,
   };
 }
 
@@ -103,6 +115,19 @@ export default function AnalyticsOverview() {
     { label: "Orders", value: fmt.compact(overview.orders), icon: "receipt_long", delta: overview.orders_delta, tone: "info" },
     { label: "Active customers", value: fmt.compact(overview.customers), icon: "group", delta: overview.customers_delta, tone: "success" },
     { label: "Avg. order", value: fmt.money(overview.avg_order_value), icon: "shopping_bag", delta: overview.aov_delta, tone: "gold" },
+    {
+      label: "Refunds (30d)",
+      value: fmt.money(overview.total_refunded_30d || 0),
+      icon: "undo",
+      delta: overview.refunded_requests_change_pct,
+      // Refunds are bad news — a *higher* refund count should look bad,
+      // so we flip the green/red convention only on this tile.
+      tone: "danger",
+      invertDelta: true,
+      sub: `${overview.refunded_requests_30d || 0} refunded request${
+        (overview.refunded_requests_30d || 0) === 1 ? "" : "s"
+      }`,
+    },
   ];
 
   return (
@@ -122,23 +147,42 @@ export default function AnalyticsOverview() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {tiles.map((t) => (
-          <div key={t.label} className="card p-5">
-            <div className="flex items-center justify-between">
-              <div className={`w-10 h-10 rounded-md ${TONE_TO_CLASS[t.tone]} flex items-center justify-center`}>
-                <Icon name={t.icon} size={20} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
+        {tiles.map((t) => {
+          // For the Refunds tile a positive delta (more refunds than last
+          // month) is bad, so we invert the green/red convention here only.
+          const deltaGood =
+            typeof t.delta === "number"
+              ? t.invertDelta
+                ? t.delta <= 0
+                : t.delta >= 0
+              : null;
+          const deltaColor =
+            deltaGood === null
+              ? "text-ink-muted"
+              : deltaGood
+                ? "text-accent-success"
+                : "text-accent-danger";
+          return (
+            <div key={t.label} className="card p-5">
+              <div className="flex items-center justify-between">
+                <div className={`w-10 h-10 rounded-md ${TONE_TO_CLASS[t.tone]} flex items-center justify-center`}>
+                  <Icon name={t.icon} size={20} />
+                </div>
+                {typeof t.delta === "number" && (
+                  <span className={`text-label-md font-medium ${deltaColor}`}>
+                    {t.delta >= 0 ? "▲" : "▼"} {fmt.percent(Math.abs(t.delta))}
+                  </span>
+                )}
               </div>
-              {typeof t.delta === "number" && (
-                <span className={`text-label-md font-medium ${t.delta >= 0 ? "text-accent-success" : "text-accent-danger"}`}>
-                  {t.delta >= 0 ? "▲" : "▼"} {fmt.percent(Math.abs(t.delta))}
-                </span>
-              )}
+              <div className="mt-4 text-display-md text-ink">{t.value}</div>
+              <div className="text-label-md text-ink-muted mt-1">
+                {t.label}
+                {t.sub ? <span className="ml-1">· {t.sub}</span> : null}
+              </div>
             </div>
-            <div className="mt-4 text-display-md text-ink">{t.value}</div>
-            <div className="text-label-md text-ink-muted mt-1">{t.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

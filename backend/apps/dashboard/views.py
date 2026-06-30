@@ -12,7 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
-from apps.orders.models import Order
+from apps.orders.models import Order, ReturnRequest
 from apps.products.models import Brand, HeroFeature, Product, ProductSpec
 from apps.products.serializers import HeroFeatureSerializer
 
@@ -30,6 +30,68 @@ User = get_user_model()
 VALID_STATUSES = {s for s, _ in Order.STATUS_CHOICES}
 
 
+def _order_unit_price(order: Order, product_id: int) -> Decimal:
+    """Return the per-unit price the parent order charged for a product.
+
+    `ReturnRequest.items` only stores product_id + quantity_returned, so we
+    look the price up from the snapshot stored on the parent Order.items
+    JSONField. Falls back to 0 if the line is missing.
+    """
+    if not order or not getattr(order, "items", None):
+        return Decimal("0")
+    for line in order.items:
+        if int(line.get("product_id") or 0) == int(product_id):
+            try:
+                return Decimal(str(line.get("price") or 0))
+            except Exception:
+                return Decimal("0")
+    return Decimal("0")
+
+
+def _refund_value(rr: ReturnRequest) -> Decimal:
+    """Sum of unit_price * quantity_returned across a single return request."""
+    total = Decimal("0")
+    order = rr.order
+    for line in (rr.items or []):
+        pid = line.get("product_id")
+        qty = int(line.get("quantity_returned") or 0)
+        if pid is None or qty <= 0:
+            continue
+        total += _order_unit_price(order, int(pid)) * Decimal(qty)
+    return total
+
+
+def _refunds_by_day(start, end):
+    """Return {date: total_refund_value} for Refunded requests decided in
+    the inclusive [start, end] window. `start` and `end` are `date` objects.
+    """
+    q = ReturnRequest.objects.filter(
+        status=ReturnRequest.STATUS_REFUNDED,
+        decided_at__date__gte=start,
+        decided_at__date__lte=end,
+    ).select_related("order")
+    out = {}
+    for rr in q:
+        d = rr.decided_at.date()
+        out[d] = out.get(d, Decimal("0")) + _refund_value(rr)
+    return out
+
+
+def _total_refunded_in_window(start, end) -> Decimal:
+    """Sum refund value for Refunded requests decided in [start, end]."""
+    return sum(
+        (
+            _refund_value(rr)
+            for rr in ReturnRequest.objects.filter(
+                status=ReturnRequest.STATUS_REFUNDED,
+                decided_at__date__gte=start,
+                decided_at__date__lte=end,
+            ).select_related("order")
+        ),
+        Decimal("0"),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
@@ -44,13 +106,13 @@ def analytics_overview(request):
     # Online payments (card/paypal) are paid at checkout; COD orders are paid
     # only after admin marks them received, so unpaid COD orders stay out of
     # revenue but still appear in the orders tile.
-    revenue_30 = (
+    gross_revenue_30 = (
         Order.objects.filter(created_at__date__gte=last_30, paid_at__isnull=False)
         .exclude(status="Cancelled")
         .aggregate(total=Sum("total_amount"))["total"]
         or Decimal("0")
     )
-    revenue_prev = (
+    gross_revenue_prev = (
         Order.objects.filter(
             created_at__date__gte=prev_30,
             created_at__date__lt=last_30,
@@ -60,6 +122,26 @@ def analytics_overview(request):
         .aggregate(total=Sum("total_amount"))["total"]
         or Decimal("0")
     )
+
+    # Refunds decrease real revenue. Match the refund value to the order
+    # date (so a refund processed today against an old order counts toward
+    # this 30d window, not the original order's window).
+    refunded_30 = _total_refunded_in_window(last_30, today)
+    refunded_prev = _total_refunded_in_window(prev_30, last_30 - timedelta(days=1))
+
+    revenue_30 = gross_revenue_30 - refunded_30
+    revenue_prev = gross_revenue_prev - refunded_prev
+
+    refunded_count_30 = ReturnRequest.objects.filter(
+        status=ReturnRequest.STATUS_REFUNDED,
+        decided_at__date__gte=last_30,
+        decided_at__date__lte=today,
+    ).count()
+    refunded_count_prev = ReturnRequest.objects.filter(
+        status=ReturnRequest.STATUS_REFUNDED,
+        decided_at__date__gte=prev_30,
+        decided_at__date__lt=last_30,
+    ).count()
     orders_30 = Order.objects.filter(created_at__date__gte=last_30).count()
     orders_prev = Order.objects.filter(
         created_at__date__gte=prev_30, created_at__date__lt=last_30
@@ -85,6 +167,10 @@ def analytics_overview(request):
             "active_users": users_30,
             "users_change_pct": pct(users_30, users_prev),
             "inventory_alerts": inventory_alerts,
+            "gross_revenue_30d": float(gross_revenue_30),
+            "total_refunded_30d": float(refunded_30),
+            "refunded_requests_30d": refunded_count_30,
+            "refunded_requests_change_pct": pct(refunded_count_30, refunded_count_prev),
         }
     )
 
@@ -108,14 +194,24 @@ def analytics_sales(request):
     )
     by_day = {row["day"]: row for row in daily}
 
+    # Subtract refunds decided on each day (refunds are matched by
+    # `decided_at` date, not by the original order date, so a refund issued
+    # today against an old order deducts from today's revenue, matching
+    # real cash flow).
+    refunds_by_day = _refunds_by_day(start, today)
+
     series = []
     for i in range(days):
         day = start + timedelta(days=i)
         row = by_day.get(day, {"day": day, "revenue": Decimal("0"), "orders": 0})
+        gross = Decimal(str(row["revenue"]))
+        refund = refunds_by_day.get(day, Decimal("0"))
+        net = gross - refund
         series.append(
             {
                 "date": day.isoformat(),
-                "revenue": float(row["revenue"]),
+                "revenue": float(net),
+                "refunds": float(refund),
                 "orders": row["orders"],
             }
         )
