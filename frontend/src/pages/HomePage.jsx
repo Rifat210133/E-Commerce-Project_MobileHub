@@ -129,8 +129,8 @@ export default function HomePage() {
               Browse all <Icon name="arrow_forward" size={18} />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {picks.slice(0, 4).map((p) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {picks.slice(0, 5).map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>
