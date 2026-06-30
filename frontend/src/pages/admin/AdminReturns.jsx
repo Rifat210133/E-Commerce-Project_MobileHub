@@ -118,6 +118,9 @@ export default function AdminReturns() {
     const target = data.find((r) => String(r.id) === String(deepLinkId));
     if (target) {
       openedDeepLinkRef.current = deepLinkId;
+      // Make sure the status pill matches this row's status so the admin
+      // sees which bucket the deep-linked return belongs to.
+      if (status !== target.status) setStatus(target.status);
       openManage(target);
       return;
     }
@@ -129,8 +132,9 @@ export default function AdminReturns() {
       .then((rr) => {
         if (cancelled) return;
         openedDeepLinkRef.current = deepLinkId;
-        // Drop the status filter so the row shows up underneath the modal.
-        if (status !== "All") setStatus("All");
+        // Sync the status pill to the row's actual status so the deep-
+        // linked return shows up underneath the modal in its bucket.
+        if (status !== rr.status) setStatus(rr.status);
         openManage(rr);
       })
       .catch(() => {
