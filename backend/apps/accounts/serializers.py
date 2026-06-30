@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import UserProfile
+from .models import EmailOTP, UserProfile
 
 User = get_user_model()
 
@@ -46,19 +46,103 @@ class UserSerializer(serializers.ModelSerializer):
         return obj.is_staff
 
 
+class RequestRegisterOTPSerializer(serializers.Serializer):
+    """Validates the email used to request a registration OTP."""
+
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value: str) -> str:
+        return value.strip().lower()
+
+
+def _hash_code(code: str) -> str:
+    """Stable hash we store instead of the raw OTP."""
+    import hashlib
+    return hashlib.sha256(code.strip().encode("utf-8")).hexdigest()
+
+
+class VerifyRegisterOTPSerializer(serializers.Serializer):
+    """Validates email + 6-digit OTP pair during the verify step.
+
+    Always returns success/failure in the same shape so an attacker can't
+    tell whether the email was already used. The actual uniqueness check
+    happens during account creation.
+    """
+
+    email = serializers.EmailField(required=True)
+    code = serializers.RegexField(
+        regex=r"^\d{6}$",
+        required=True,
+        error_messages={"invalid": "Enter the 6-digit code from your email."},
+    )
+
+    def validate(self, attrs):
+        from .otp import consume_register_otp
+
+        email = attrs["email"].strip().lower()
+        # We *intentionally* always invoke the same path so timing/result
+        # shape doesn't leak whether an OTP was ever sent. The helper returns
+        # (ok, debug_error) — the public response only surfaces ok.
+        ok, _reason = consume_register_otp(email, attrs["code"])
+        if not ok:
+            raise serializers.ValidationError(
+                {"code": "That code is invalid, expired, or already used."}
+            )
+        attrs["email"] = email
+        return attrs
+
+
 class RegisterSerializer(serializers.ModelSerializer):
+    """Public registration — requires a verified OTP for the chosen email.
+
+    The client is expected to first call ``POST /api/auth/register/otp/`` with
+    the email, then post this serializer with the same email + the 6-digit
+    code from that email. The OTP is consumed during ``validate`` so the same
+    code can never be re-used to register twice.
+    """
+
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
+    otp_code = serializers.RegexField(
+        regex=r"^\d{6}$",
+        write_only=True,
+        required=True,
+        error_messages={"invalid": "Enter the 6-digit code sent to your email."},
+    )
 
     class Meta:
         model = User
-        fields = ("username", "email", "first_name", "last_name", "password", "password_confirm")
+        fields = (
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "password",
+            "password_confirm",
+            "otp_code",
+        )
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
-        if User.objects.filter(email__iexact=attrs["email"]).exists():
-            raise serializers.ValidationError({"email": "An account with this email already exists."})
+
+        email = attrs["email"].strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            # Re-use the same shape as the OTP-verify path so callers can't
+            # tell apart "email already used" from "OTP invalid".
+            raise serializers.ValidationError(
+                {"otp_code": "That code is invalid, expired, or already used."}
+            )
+
+        from .otp import consume_register_otp
+
+        ok, _reason = consume_register_otp(email, attrs.pop("otp_code"))
+        if not ok:
+            raise serializers.ValidationError(
+                {"otp_code": "That code is invalid, expired, or already used."}
+            )
+
+        attrs["email"] = email
         return attrs
 
     def create(self, validated_data):

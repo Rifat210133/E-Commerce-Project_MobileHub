@@ -4,6 +4,11 @@ import api from "./client";
 export const authApi = {
   login: (credentials) => api.post("/auth/login/", credentials).then((r) => r.data),
   register: (payload) => api.post("/auth/register/", payload).then((r) => r.data),
+  // Step 1 of registration — ask the backend to email a 6-digit OTP to the
+  // given address. The user must present that code (via `register`) to
+  // actually create the account. Server is rate-limited per IP.
+  requestRegisterOtp: (email) =>
+    api.post("/auth/register/otp/", { email }).then((r) => r.data),
   logout: (refresh) => api.post("/auth/logout/", { refresh }).then((r) => r.data),
   me: () => api.get("/auth/me/").then((r) => r.data),
   updateProfile: (payload) => api.patch("/auth/me/", payload).then((r) => r.data),

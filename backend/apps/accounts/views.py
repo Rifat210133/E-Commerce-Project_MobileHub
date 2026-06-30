@@ -7,6 +7,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -22,7 +23,12 @@ User = get_user_model()
 
 
 class RegisterView(generics.CreateAPIView):
-    """POST /api/auth/register/"""
+    """POST /api/auth/register/
+
+    Requires a valid 6-digit OTP that was previously issued via
+    ``POST /api/auth/register/otp/``. The OTP is consumed atomically inside
+    the serializer's ``validate`` step.
+    """
 
     serializer_class = RegisterSerializer
     permission_classes = (permissions.AllowAny,)
@@ -34,6 +40,51 @@ class RegisterView(generics.CreateAPIView):
         return Response(
             AuthTokenPairSerializer.for_user(user), status=status.HTTP_201_CREATED
         )
+
+
+class RegisterOTPThrottle(AnonRateThrottle):
+    """Rate-limit how often an anonymous caller can request a registration OTP."""
+
+    scope = "register-otp"
+
+
+class RegisterOTPRequestView(APIView):
+    """POST /api/auth/register/otp/ — send a verification code.
+
+    Body: ``{ "email": "user@example.com" }``
+
+    Always returns 200 with a neutral success message so attackers can't
+    enumerate which emails are already registered. In DEBUG the response
+    includes the freshly generated ``code`` (handy when running the
+    ``console`` email backend) and a ``debug_error`` if SMTP failed.
+    """
+
+    permission_classes = (permissions.AllowAny,)
+    throttle_classes = (RegisterOTPThrottle,)
+
+    def post(self, request):
+        from .serializers import RequestRegisterOTPSerializer
+        from .otp import issue_register_otp
+
+        serializer = RequestRegisterOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+
+        result = issue_register_otp(email)
+
+        body = {
+            "detail": (
+                "If that email is not already registered, a 6-digit "
+                "verification code has been sent."
+            )
+        }
+        if getattr(__import__("django").conf.settings, "DEBUG", False):
+            body["sent"] = result.get("sent", False)
+            if "code" in result:
+                body["code"] = result["code"]
+            if "debug_error" in result:
+                body["debug_error"] = result["debug_error"]
+        return Response(body, status=status.HTTP_200_OK)
 
 
 class LoginView(APIView):

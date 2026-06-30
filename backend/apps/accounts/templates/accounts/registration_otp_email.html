@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <body style="font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f6f7fb; padding:24px; color:#1a1a1a;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:520px; margin:0 auto; background:#ffffff; border-radius:12px; padding:28px;">
+      <tr><td>
+        <h1 style="margin:0 0 12px; font-size:22px;">Verify your email</h1>
+        <p style="margin:0 0 16px; line-height:1.5;">
+          Welcome to MobileHub! Use the code below to finish creating your account.
+        </p>
+        <div style="margin:24px 0; text-align:center;">
+          <div style="display:inline-block; background:#f1f3f8; border-radius:10px; padding:14px 28px; letter-spacing:8px; font-size:28px; font-weight:700; color:#1a1a1a;">
+            {{ code }}
+          </div>
+        </div>
+        <p style="margin:0 0 12px; line-height:1.5;">
+          This code expires in <strong>{{ expiry_minutes }} minutes</strong> and can only be used once.
+        </p>
+        <p style="margin:0; color:#5b6371; font-size:13px;">
+          If you didn't request this code, you can safely ignore this email — no account will be created.
+        </p>
+        <hr style="border:none; border-top:1px solid #ececf2; margin:24px 0;">
+        <p style="margin:0; color:#5b6371; font-size:12px;">{{ site_name }}</p>
+      </td></tr>
+    </table>
+  </body>
+</html>

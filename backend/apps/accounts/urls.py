@@ -7,12 +7,16 @@ from .views import (
     MeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
+    RegisterOTPRequestView,
     RegisterView,
 )
 
 app_name = "accounts"
 
 urlpatterns = [
+    # Step 1 of registration: send the 6-digit OTP to the user's email.
+    path("register/otp/", RegisterOTPRequestView.as_view(), name="register-otp"),
+    # Step 2 of registration: verify the OTP + create the account.
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),

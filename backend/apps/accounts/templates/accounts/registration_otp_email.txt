@@ -1,0 +1,12 @@
+Hi,
+
+Welcome to MobileHub! To finish creating your account, enter this verification
+code on the registration page:
+
+    {{ code }}
+
+This code is valid for the next {{ expiry_minutes }} minutes and can only be
+used once. If you didn't request this code, you can safely ignore this email —
+no account will be created.
+
+— The MobileHub team

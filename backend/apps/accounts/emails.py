@@ -44,3 +44,32 @@ def send_password_reset_email(request, user) -> None:
     message = EmailMultiAlternatives(subject, text_body, from_email, to_email)
     message.attach_alternative(html_body, "text/html")
     message.send(fail_silently=False)
+
+
+# ---------------------------------------------------------------------------
+# Registration OTP
+# ---------------------------------------------------------------------------
+def send_registration_otp_email(email: str, code: str) -> None:
+    """Send the 6-digit registration verification code to ``email``.
+
+    Mirrors the password-reset layout: same template directory, same
+    multi-alternatives (plain text + HTML). Code is short-lived (10 min)
+    and one-time-use — that fact is called out to the user in the email.
+    """
+    context = {
+        "code": code,
+        "email": email,
+        "site_name": "MobileHub",
+        "expiry_minutes": 10,
+    }
+
+    subject = "Your MobileHub verification code"
+    from_email = getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@mobilehub.local")
+    to_email = [email]
+
+    text_body = render_to_string("accounts/registration_otp_email.txt", context)
+    html_body = render_to_string("accounts/registration_otp_email.html", context)
+
+    message = EmailMultiAlternatives(subject, text_body, from_email, to_email)
+    message.attach_alternative(html_body, "text/html")
+    message.send(fail_silently=False)

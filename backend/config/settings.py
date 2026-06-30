@@ -133,6 +133,12 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_RATES": {
+        # Anti-abuse cap on how often an anonymous user can request a
+        # registration OTP. 5 per hour per IP keeps the door open without
+        # letting anyone mail-bomb arbitrary addresses via us.
+        "register-otp": "5/hour",
+    },
 }
 
 SIMPLE_JWT = {
