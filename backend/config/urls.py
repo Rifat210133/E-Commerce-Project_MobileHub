@@ -9,6 +9,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("apps.accounts.urls")),
@@ -17,7 +18,27 @@ urlpatterns = [
     path("api/", include("apps.recommendations.urls")),
     path("api/", include("apps.comparison.urls")),
     path("api/admin/", include("apps.dashboard.urls")),
-]
+    path(
+        "api/admin/notifications/",
+        include("apps.notifications.admin_urls"),
+    ),
+    path(
+        "api/notifications/",
+        include("apps.notifications.customer_urls"),
+    ),
+    path(
+        "api/admin/return-policies/",
+        include("apps.policies.admin_urls"),
+    ),
+    path(
+        "api/return-policies/",
+        include("apps.policies.customer_urls"),
+    ),
+    path(
+        "api/admin/returns/",
+        include("apps.orders.admin_urls"),
+    ),
+]  # end urlpatterns
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,9 +1,11 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { useCartStore } from "../stores/cartStore";
 import { useRecFiltersStore } from "../stores/recFiltersStore";
+import { useUserNotificationStore } from "../stores/userNotificationStore";
 import Icon from "./Icon";
+import UserNotificationBell from "./UserNotificationBell";
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -14,6 +16,20 @@ export default function Navbar() {
   const isAdminView = isAdmin && isAdmin();
   const recActiveCount = useRecFiltersStore((s) => s.activeCount);
   const showForYou = !isAdminView && recActiveCount > 0;
+  // Customer bell polling — start while a non-admin user is signed in,
+  // tear down on logout. The admin already has its own bell in the admin
+  // header, so we hide the storefront bell from staff accounts.
+  const startNotifications = useUserNotificationStore((s) => s.start);
+  const stopNotifications = useUserNotificationStore((s) => s.stop);
+  useEffect(() => {
+    if (isAuthenticated() && !isAdminView) {
+      startNotifications();
+    }
+    return () => stopNotifications();
+    // We intentionally only react to authentication/admin-view changes;
+    // the store actions are stable references from Zustand.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated(), isAdminView]);
 
   const onSearch = (e) => {
     e.preventDefault();
@@ -106,6 +122,7 @@ export default function Navbar() {
                   </span>
                 )}
               </Link>
+              {isAuthenticated() && <UserNotificationBell />}
             </>
           )}
 
@@ -130,6 +147,9 @@ export default function Navbar() {
                     <>
                       <Link to="/orders" onClick={() => setMenuOpen(false)} className="block px-4 py-2 hover:bg-surface-alt">
                         <Icon name="receipt_long" size={18} className="inline mr-2" /> My orders
+                      </Link>
+                      <Link to="/returns" onClick={() => setMenuOpen(false)} className="block px-4 py-2 hover:bg-surface-alt">
+                        <Icon name="undo" size={18} className="inline mr-2" /> My returns
                       </Link>
                       <Link to="/wishlist" onClick={() => setMenuOpen(false)} className="block px-4 py-2 hover:bg-surface-alt">
                         <Icon name="favorite" size={18} className="inline mr-2" /> Wishlist

@@ -102,14 +102,18 @@ class LoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Allow login by email or username
+        # Allow login by email or username. Built-in auth.User's `email`
+        # field doesn't register an `email_iexact` shortcut, so we filter
+        # with the explicit `__iexact` lookup here.
         user = None
         if "@" in identifier:
-            user_obj = User.objects.filter(email_iexact=identifier).first()
+            user_obj = (
+                User.objects.filter(email__iexact=identifier).first()
+            )
             if user_obj:
                 user = authenticate(
                     request, username=user_obj.username, password=secret
-            )
+                )
         else:
             user = authenticate(request, username=identifier, password=secret)
 

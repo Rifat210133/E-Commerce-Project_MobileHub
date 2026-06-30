@@ -15,6 +15,14 @@ urlpatterns = [
     path("orders/checkout/", views.checkout, name="checkout"),
     path("orders/", views.order_list, name="order-list"),
     path("orders/<str:order_number>/", views.order_detail, name="order-detail"),
+    # Returns (customer-facing)
+    path("returns/", views.my_returns, name="my-returns"),
+    path(
+        "orders/<str:order_number>/returns/",
+        views.order_returns,
+        name="order-returns",
+    ),
+    path("returns/<int:return_id>/cancel/", views.cancel_return, name="cancel-return"),
     # Wishlist
     path("wishlist/", views.wishlist_detail, name="wishlist-detail"),
     path("wishlist/add/<int:product_id>/", views.wishlist_add, name="wishlist-add"),

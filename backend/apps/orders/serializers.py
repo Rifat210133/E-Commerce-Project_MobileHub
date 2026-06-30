@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.products.models import Product
 from apps.products.serializers import ProductListSerializer
 
-from .models import Cart, CartItem, Order, WishList
+from .models import Cart, CartItem, Order, ReturnRequest, WishList
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -57,8 +57,12 @@ class ShippingAddressSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=32)
     address_line1 = serializers.CharField(max_length=200)
     address_line2 = serializers.CharField(max_length=200, required=False, allow_blank=True)
-    city = serializers.CharField(max_length=80)
-    state = serializers.CharField(max_length=80)
+    # Bangladesh admin-area cascade — Division → District → Upazila replaces
+    # the old free-text city/state fields, so the form has no City/State
+    # inputs anymore.
+    division = serializers.CharField(max_length=60)
+    district = serializers.CharField(max_length=80)
+    upazila = serializers.CharField(max_length=80)
     postal_code = serializers.CharField(max_length=20)
     country = serializers.CharField(max_length=80, default="Bangladesh")
 
@@ -147,3 +151,105 @@ class WishListSerializer(serializers.ModelSerializer):
     class Meta:
         model = WishList
         fields = ("id", "products", "created_at")
+
+
+# ---------------------------------------------------------------------------
+# Return requests
+# ---------------------------------------------------------------------------
+class ReturnRequestItemSerializer(serializers.Serializer):
+    """One line on a return request — partial / per-product info."""
+
+    product_id = serializers.IntegerField()
+    product_name = serializers.CharField()
+    quantity_returned = serializers.IntegerField(min_value=1)
+    image = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+
+class ReturnRequestSerializer(serializers.ModelSerializer):
+    """Read serializer — used for both customer + admin responses."""
+
+    order_number = serializers.CharField(source="order.order_number", read_only=True)
+    user_email = serializers.CharField(source="user.email", read_only=True)
+    user_name = serializers.SerializerMethodField()
+    items = ReturnRequestItemSerializer(many=True, read_only=True)
+    total_quantity = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = ReturnRequest
+        fields = (
+            "id",
+            "order",
+            "order_number",
+            "user",
+            "user_email",
+            "user_name",
+            "status",
+            "reason",
+            "admin_note",
+            "items",
+            "total_quantity",
+            "created_at",
+            "updated_at",
+            "decided_at",
+        )
+        read_only_fields = (
+            "order",
+            "user",
+            "status",
+            "admin_note",
+            "created_at",
+            "updated_at",
+            "decided_at",
+        )
+
+    def get_user_name(self, obj):
+        u = obj.user
+        full = (f"{u.first_name} {u.last_name}").strip()
+        return full or u.username
+
+
+class CreateReturnRequestSerializer(serializers.Serializer):
+    """Customer-side payload for opening a return request."""
+
+    reason = serializers.CharField(min_length=10, max_length=1000)
+    # List of {"product_id": int, "quantity_returned": int}. We resolve the
+    # product names + images server-side so the client doesn't have to
+    # round-trip and the snapshot is always trustworthy.
+    items = serializers.ListField(
+        child=serializers.DictField(),
+        allow_empty=False,
+        max_length=50,
+    )
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one item is required.")
+        for idx, row in enumerate(value):
+            pid = row.get("product_id")
+            qty = row.get("quantity_returned")
+            if not isinstance(pid, int):
+                raise serializers.ValidationError(
+                    f"Item {idx}: product_id must be an integer."
+                )
+            if not isinstance(qty, int) or qty < 1:
+                raise serializers.ValidationError(
+                    f"Item {idx}: quantity_returned must be ≥ 1."
+                )
+        # Collapse duplicates (same product_id) by summing quantities.
+        merged: dict[int, int] = {}
+        for row in value:
+            merged[row["product_id"]] = merged.get(row["product_id"], 0) + row[
+                "quantity_returned"
+            ]
+        return [
+            {"product_id": pid, "quantity_returned": qty}
+            for pid, qty in merged.items()
+        ]
+
+
+class AdminReturnRequestPatchSerializer(serializers.Serializer):
+    """Admin can only edit ``admin_note`` directly. Status transitions
+    go through dedicated approve/reject/refund endpoints so the
+    side-effects (notifications, stock restore) stay consistent."""
+
+    admin_note = serializers.CharField(allow_blank=True, max_length=2000)

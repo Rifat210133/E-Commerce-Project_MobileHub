@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     "apps.recommendations",
     "apps.dashboard",
     "apps.comparison",
-]
+    "apps.notifications",
+    "apps.policies",
+]  # end INSTALLED_APPS
 
 # --- App init -----------------------------------------------------------------
 import logging

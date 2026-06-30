@@ -30,9 +30,15 @@ export default function OrdersPage() {
 
   return (
     <div className="container-page py-8">
-      <div className="mb-6">
-        <div className="eyebrow text-primary mb-1">Orders</div>
-        <h1 className="text-headline-lg text-ink">My orders</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="eyebrow text-primary mb-1">Orders</div>
+          <h1 className="text-headline-lg text-ink">My orders</h1>
+        </div>
+        <Link to="/returns" className="btn-outline !py-2 !px-3">
+          <Icon name="undo" size={18} />
+          <span className="ml-1">My returns</span>
+        </Link>
       </div>
       <div className="space-y-3">
         {orders.map((o) => (

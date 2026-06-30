@@ -1,12 +1,17 @@
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuthStore } from "../../stores/authStore";
+import { useNotificationStore } from "../../stores/notificationStore";
 import Icon from "../../components/Icon";
+import NotificationBell from "../../components/admin/NotificationBell";
 
 const NAV = [
   { to: "/admin", label: "Analytics", icon: "monitoring", end: true },
   { to: "/admin/orders", label: "Orders", icon: "receipt_long" },
   { to: "/admin/products", label: "Products", icon: "smartphone" },
   { to: "/admin/hero", label: "Featured today", icon: "campaign" },
+  { to: "/admin/return-policies", label: "Return policies", icon: "policy" },
+  { to: "/admin/returns", label: "Returns", icon: "undo" },
   { to: "/admin/customers", label: "Customers", icon: "group" },
   { to: "/admin/inventory", label: "Inventory", icon: "inventory_2" },
 ];
@@ -15,6 +20,18 @@ export default function AdminLayout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const startNotifs = useNotificationStore((s) => s.start);
+  const stopNotifs = useNotificationStore((s) => s.stop);
+
+  // Admin-only: poll for new order notifications while the dashboard is
+  // mounted. Cleanup on unmount so non-admin routes (e.g. storefront) don't
+  // keep hitting the endpoint.
+  useEffect(() => {
+    if (user?.is_admin || user?.is_staff) {
+      startNotifs();
+      return () => stopNotifs();
+    }
+  }, [user?.is_admin, user?.is_staff, startNotifs, stopNotifs]);
 
   const onLogout = async () => {
     await logout();
@@ -73,6 +90,7 @@ export default function AdminLayout() {
               <Icon name="exit_to_app" size={18} />
               <span className="hidden md:inline ml-1">View storefront</span>
             </Link>
+            <NotificationBell />
             <div className="text-right hidden sm:block">
               <div className="text-label-md text-ink">{user?.email}</div>
               <div className="text-label-sm text-ink-muted capitalize">{user?.role || "Admin"}</div>

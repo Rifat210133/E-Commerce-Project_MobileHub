@@ -129,4 +129,83 @@ export const adminApi = {
   getHero: () => api.get("/admin/hero/").then((r) => r.data),
   updateHero: (payload) =>
     api.patch("/admin/hero/", payload).then((r) => r.data),
+
+  // Admin notifications (bell badge + drawer feed).
+  notifications: (params) =>
+    api.get("/admin/notifications/", { params }).then((r) => r.data),
+  markNotificationRead: (id) =>
+    api.post(`/admin/notifications/${id}/read/`).then((r) => r.data),
+  markAllNotificationsRead: () =>
+    api.post("/admin/notifications/read-all/").then((r) => r.data),
+
+  // Admin store-policy CMS (ReturnPolicy CRUD + active toggle).
+  adminReturnPolicies: () =>
+    api.get("/admin/return-policies/").then((r) => r.data),
+  createReturnPolicy: (payload) =>
+    api.post("/admin/return-policies/", payload).then((r) => r.data),
+  updateReturnPolicy: (id, payload) =>
+    api.patch(`/admin/return-policies/${id}/`, payload).then((r) => r.data),
+  deleteReturnPolicy: (id) =>
+    api.delete(`/admin/return-policies/${id}/`).then((r) => r.data),
+  toggleReturnPolicy: (id) =>
+    api.post(`/admin/return-policies/${id}/toggle/`).then((r) => r.data),
+
+  // Admin return-request workflow (approve / reject / refund + admin_note).
+  adminReturns: (params) =>
+    api.get("/admin/returns/", { params }).then((r) => r.data),
+  adminReturnDetail: (id) =>
+    api.get(`/admin/returns/${id}/`).then((r) => r.data),
+  updateReturnAdminNote: (id, admin_note) =>
+    api.patch(`/admin/returns/${id}/`, { admin_note }).then((r) => r.data),
+  approveReturn: (id, admin_note) =>
+    api
+      .post(`/admin/returns/${id}/approve/`, { admin_note })
+      .then((r) => r.data),
+  rejectReturn: (id, admin_note) =>
+    api
+      .post(`/admin/returns/${id}/reject/`, { admin_note })
+      .then((r) => r.data),
+  refundReturn: (id, admin_note) =>
+    api
+      .post(`/admin/returns/${id}/refund/`, { admin_note })
+      .then((r) => r.data),
+  deleteReturn: (id) =>
+    api.delete(`/admin/returns/${id}/`).then((r) => r.data),
+};
+
+// ----- User notifications (customer-facing bell on the navbar) -----
+// Mirror of adminApi's notifications surface but scoped to the logged-in
+// customer via IsAuthenticated. Same {results, unread_count} payload.
+export const notificationsApi = {
+  list: (params) =>
+    api.get("/notifications/", { params }).then((r) => r.data),
+  markRead: (id) =>
+    api.post(`/notifications/${id}/read/`).then((r) => r.data),
+  markAllRead: () =>
+    api.post("/notifications/read-all/").then((r) => r.data),
+};
+
+// ----- Public store policies (customer-facing CMS) ----------------------
+// Read-only access to whichever policy the storefront has marked as
+// is_active=True. Anonymous (unauthenticated) requests are allowed.
+export const policiesApi = {
+  list: () => api.get("/return-policies/").then((r) => r.data),
+  detail: (slug) =>
+    api.get(`/return-policies/${slug}/`).then((r) => r.data),
+};
+
+// ----- Returns (customer-facing) ---------------------------------------
+// Customers can list every return they've filed, list returns for one
+// order, open a new return request on a delivered order, and cancel a
+// pending request. All endpoints require authentication.
+export const returnsApi = {
+  listMine: () => api.get("/returns/").then((r) => r.data),
+  listForOrder: (orderNumber) =>
+    api.get(`/orders/${orderNumber}/returns/`).then((r) => r.data),
+  create: (orderNumber, payload) =>
+    api
+      .post(`/orders/${orderNumber}/returns/`, payload)
+      .then((r) => r.data),
+  cancel: (returnId) =>
+    api.post(`/returns/${returnId}/cancel/`).then((r) => r.data),
 };

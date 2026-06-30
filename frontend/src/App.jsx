@@ -18,10 +18,12 @@ import RegisterPage from "./pages/RegisterPage";
 import ProfilePage from "./pages/ProfilePage";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import ReturnsPage from "./pages/ReturnsPage";
 import WishlistPage from "./pages/WishlistPage";
 import ComparePage from "./pages/ComparePage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import ReturnPolicyPage from "./pages/ReturnPolicyPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import CompareBar from "./components/CompareBar";
@@ -34,6 +36,8 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminHero from "./pages/admin/AdminHero";
+import AdminReturnPolicies from "./pages/admin/AdminReturnPolicies";
+import AdminReturns from "./pages/admin/AdminReturns";
 
 function Protected({ children, admin = false }) {
   const { access, user, fetchMe } = useAuthStore();
@@ -94,6 +98,8 @@ export default function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="inventory" element={<AdminInventory />} />
           <Route path="hero" element={<AdminHero />} />
+          <Route path="return-policies" element={<AdminReturnPolicies />} />
+          <Route path="returns" element={<AdminReturns />} />
         </Route>
 
         {/* Customer-facing routes share the navbar/footer */}
@@ -114,10 +120,12 @@ export default function App() {
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/return-policy" element={<ReturnPolicyPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password/:uid/:token" element={<ResetPasswordPage />} />
                   <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
                   <Route path="/orders" element={<Protected><AdminBlocked><OrdersPage /></AdminBlocked></Protected>} />
+                  <Route path="/returns" element={<Protected><AdminBlocked><ReturnsPage /></AdminBlocked></Protected>} />
                   <Route path="/orders/:orderNumber" element={<Protected><AdminBlocked><OrderDetailPage /></AdminBlocked></Protected>} />
                   <Route path="/wishlist" element={<AdminBlocked><WishlistPage /></AdminBlocked>} />
                   <Route path="/compare" element={<ComparePage />} />

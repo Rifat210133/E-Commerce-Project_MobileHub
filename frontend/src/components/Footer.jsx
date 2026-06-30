@@ -37,6 +37,9 @@ export default function Footer() {
         <div>
           <div className="eyebrow mb-3">Support</div>
           <ul className="space-y-2 text-body-md text-ink-muted">
+            <li><Link className="link" to="/return-policy">Return policy</Link></li>
+            <li><Link className="link" to="/terms">Terms of service</Link></li>
+            <li><Link className="link" to="/privacy">Privacy policy</Link></li>
             <li><span className="link inline-flex items-center gap-2"><Icon name="mail" size={18} /> support@mobilehub.com</span></li>
             <li><span className="link inline-flex items-center gap-2"><Icon name="phone" size={18} /> 1-800-MOBILE</span></li>
             <li><span className="link inline-flex items-center gap-2"><Icon name="location_on" size={18} /> San Francisco, CA</span></li>

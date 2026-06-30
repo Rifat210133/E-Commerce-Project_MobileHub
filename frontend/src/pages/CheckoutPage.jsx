@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ordersApi } from "../api";
+import api from "../api/client";
 import { useCartStore } from "../stores/cartStore";
 import { useUIStore } from "../stores/uiStore";
 import Icon from "../components/Icon";
@@ -18,8 +19,9 @@ export default function CheckoutPage() {
     full_name: "",
     address_line1: "",
     address_line2: "",
-    city: "",
-    state: "",
+    division: "",
+    district: "",
+    upazila: "",
     postal_code: "",
     country: "Bangladesh",
     phone: "",
@@ -29,6 +31,36 @@ export default function CheckoutPage() {
     card_expiry: "",
     card_cvc: "",
   });
+
+  // Bangladesh admin-area cascade (Division → District → Upazila), fetched
+  // once on mount from the same /auth/bd-geo/ endpoint the profile form uses.
+  const [divisions, setDivisions] = useState([]);
+  useEffect(() => {
+    api.get("/auth/bd-geo/")
+      .then((r) => setDivisions(r.data?.divisions || []))
+      .catch(() => setDivisions([]));
+  }, []);
+
+  // Derive the available districts/upazilas for the picked division/district.
+  // Stale values (e.g. user saves then later renames a district) just yield
+  // an empty list, forcing them to re-pick.
+  const districtsForDivision = useMemo(() => {
+    if (!form.division) return [];
+    return divisions.find((d) => d.name === form.division)?.districts || [];
+  }, [divisions, form.division]);
+
+  const upazilasForDistrict = useMemo(() => {
+    if (!form.district) return [];
+    return districtsForDivision.find((d) => d.name === form.district)?.upazilas || [];
+  }, [districtsForDivision, form.district]);
+
+  // Changing a parent resets the children so we never save an inconsistent
+  // (division, district, upazila) tuple.
+  const onDivisionChange = (e) =>
+    setForm((f) => ({ ...f, division: e.target.value, district: "", upazila: "" }));
+  const onDistrictChange = (e) =>
+    setForm((f) => ({ ...f, district: e.target.value, upazila: "" }));
+  const onUpazilaChange = (e) => setField("upazila", e.target.value);
 
   if (!items.length) {
     return (
@@ -48,8 +80,9 @@ export default function CheckoutPage() {
   const REQUIRED_FIELDS = [
     ["full_name", "Full name"],
     ["address_line1", "Address line 1"],
-    ["city", "City"],
-    ["state", "State / region"],
+    ["division", "Division"],
+    ["district", "District"],
+    ["upazila", "Upazila"],
     ["postal_code", "Postal code"],
     ["phone", "Phone"],
   ];
@@ -87,15 +120,16 @@ const submit = async () => {
         return;
       }
       const shippingAddress = {
-        full_name: form.full_name.trim(),
-        address_line1: form.address_line1.trim(),
-        address_line2: (form.address_line2 || "").trim(),
-        city: form.city.trim(),
-        state: form.state.trim(),
-        postal_code: form.postal_code.trim(),
-        country: (form.country || "Bangladesh").trim(),
-        phone: form.phone.trim(),
-      };
+          full_name: form.full_name.trim(),
+          address_line1: form.address_line1.trim(),
+          address_line2: (form.address_line2 || "").trim(),
+          division: (form.division || "").trim(),
+          district: (form.district || "").trim(),
+          upazila: (form.upazila || "").trim(),
+          postal_code: form.postal_code.trim(),
+          country: (form.country || "Bangladesh").trim(),
+          phone: form.phone.trim(),
+        };
       const payload = {
         shipping_address: shippingAddress,
         payment_method: form.payment_method,
@@ -157,16 +191,47 @@ const submit = async () => {
                 <div className="sm:col-span-2">
                   <div className="label">Address line 2 (optional)</div>
                   <input className="input" value={form.address_line2} onChange={(e) => setField("address_line2", e.target.value)} />
-                </div>
-                <div>
-                  <div className="label">City</div>
-                  <input className="input" value={form.city} onChange={(e) => setField("city", e.target.value)} />
-                </div>
-                <div>
-                  <div className="label">State / Province</div>
-                  <input className="input" value={form.state} onChange={(e) => setField("state", e.target.value)} />
-                </div>
-                <div>
+                </div>                  {/* Bangladesh: Division → District → Upazila cascade, same
+                      pattern as ProfilePage. Country stays a text input for
+                      now so international addresses can still be entered by
+                      hand if needed. */}
+                  <div className="sm:col-span-2">
+                    <div className="label">Division</div>
+                    <select className="input" value={form.division} onChange={onDivisionChange}>
+                      <option value="">Select division</option>
+                      {divisions.map((d) => (
+                        <option key={d.name} value={d.name}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="label">District</div>
+                    <select
+                      className="input"
+                      value={form.district}
+                      onChange={onDistrictChange}
+                      disabled={!form.division || districtsForDivision.length === 0}
+                    >
+                      <option value="">{form.division ? "Select district" : "Pick a division first"}</option>
+                      {districtsForDivision.map((d) => (
+                        <option key={d.name} value={d.name}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="label">Upazila</div>
+                    <select
+                      className="input"
+                      value={form.upazila}
+                      onChange={onUpazilaChange}
+                      disabled={!form.district || upazilasForDistrict.length === 0}
+                    >
+                      <option value="">{form.district ? "Select upazila" : "Pick a district first"}</option>
+                      {upazilasForDistrict.map((u) => (
+                        <option key={u} value={u}>{u}</option>
+                      ))}
+                    </select>
+                  </div>                <div>
                   <div className="label">Postal code</div>
                   <input className="input" value={form.postal_code} onChange={(e) => setField("postal_code", e.target.value)} />
                 </div>
@@ -239,7 +304,8 @@ const submit = async () => {
                 <div className="text-body-md text-ink">
                   {form.full_name}<br />
                   {form.address_line1}{form.address_line2 ? `, ${form.address_line2}` : ""}<br />
-                  {form.city}, {form.state} {form.postal_code}<br />
+                  {form.upazila ? `${form.upazila}, ` : ""}{form.district ? `${form.district}, ` : ""}{form.division ? `${form.division}` : ""}<br />
+                  {form.postal_code}<br />
                   {form.country} · {form.phone}
                 </div>
               </div>
