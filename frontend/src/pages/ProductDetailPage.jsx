@@ -390,7 +390,26 @@ export default function ProductDetailPage() {
       ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
       : 0;
 
-  const showPrice = selectedVariant?.price ? Number(selectedVariant.price) : product.price;
+  // Only trust a variant's `price` when it's within a sane band of the
+  // base product price. Variants in MobileHub carry their *full* price
+  // (not a delta) — so a value like 99 on a 20000TK phone is a data-entry
+  // bug, not a real "from 99". Fall back to the base price in that case
+  // and warn so the bad row can be cleaned up server-side.
+  const basePrice = Number(product.price);
+  const variantPrice = selectedVariant?.price != null ? Number(selectedVariant.price) : null;
+  const variantIsPlausible =
+    variantPrice != null &&
+    !Number.isNaN(variantPrice) &&
+    variantPrice > 0 &&
+    variantPrice >= basePrice * 0.5 &&
+    variantPrice <= basePrice * 2;
+  if (variantPrice != null && !variantIsPlausible && basePrice > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[ProductDetailPage] Implausible variant price on ${product.name ?? product.id}: variant=${variantPrice}, base=${basePrice}. Falling back to base price.`,
+    );
+  }
+  const showPrice = variantIsPlausible ? variantPrice : basePrice;
   const showOriginal =
     product.original_price && Number(showPrice) < Number(product.original_price)
       ? product.original_price
