@@ -45,9 +45,16 @@ export const useCartStore = create((set, get) => ({
 
   updateQty: async (itemId, quantity) => {
     if (quantity <= 0) return get().removeItem(itemId);
-    const data = await ordersApi.updateCartItem(itemId, quantity);
-    const items = data.items || [];
-    set({ items, ...computeTotals(items) });
+    try {
+      const data = await ordersApi.updateCartItem(itemId, quantity);
+      const items = data.items || [];
+      set({ items, ...computeTotals(items) });
+    } catch (e) {
+      // Re-throw with the parsed error body so the cart UI can show
+      // "Only N in stock — you asked for M" instead of a generic error.
+      e.stockError = e?.response?.data || null;
+      throw e;
+    }
   },
 
   removeItem: async (itemId) => {

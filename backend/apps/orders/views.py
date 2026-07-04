@@ -111,7 +111,20 @@ def cart_update(request, item_id: int):
     serializer.is_valid(raise_exception=True)
     cart = _get_or_create_cart(request.user)
     item = get_object_or_404(CartItem, pk=item_id, cart=cart)
-    item.quantity = serializer.validated_data["quantity"]
+    quantity = serializer.validated_data["quantity"]
+    if item.product.stock < quantity:
+        # Mirror the cart_add stock-exceeded payload so the cart-line UI
+        # can show 'Only N in stock — you asked for M' instead of failing
+        # silently or showing a generic error.
+        return Response(
+            {
+                "detail": "Not enough stock.",
+                "available": item.product.stock,
+                "requested": quantity,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    item.quantity = quantity
     item.save(update_fields=["quantity"])
     return Response(CartSerializer(cart).data)
 
