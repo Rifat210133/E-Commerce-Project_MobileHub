@@ -2,14 +2,22 @@
 
 Nagad's flow is four steps (vs bKash's three):
 
-1. ``POST {base}/check-out/initialize/{merchant_id}/{order_id}`` — returns
-   ``challenge`` + ``payment_reference_id`` + ``callBackUrl``.
-2. The FE POSTs the ``challenge`` to ``/check-out/complete/{payment_ref}``
+1. ``POST {base}/remote-payment-gateway-1.0/check-out/initialize/{merchant_id}/{order_id}``
+   — returns ``challenge`` + ``payment_reference_id`` + ``callBackUrl``.
+2. The FE POSTs the ``challenge`` to
+   ``/remote-payment-gateway-1.0/check-out/complete/{payment_ref}``
    along with the OTP (sandbox ignores OTP).
-3. ``POST {base}/check-out/verify/{payment_ref}`` — final status check.
+3. ``POST {base}/remote-payment-gateway-1.0/check-out/verify/{payment_ref}``
+   — final status check.
 4. The FE was redirected to ``callBackUrl`` with the payment ref; we call
    verify ourselves server-side and ignore whatever the FE shows on its
    side (the FE is untrusted).
+
+Note on path segments: the real Nagad gateway mounts everything under
+``/remote-payment-gateway-1.0/`` (the same way bKash mounts under
+``/tokenized/checkout/``). The provider appends that segment itself so
+``settings.NAGAD['BASE_URL']`` stays clean — matches the bKash adapter
+and matches what the docs call the "API base URL".
 
 For the sandbox, the merchant credentials and ``merchantPrivateKey``
 are pre-published by Nagad; in production they must come from env vars.
@@ -45,8 +53,8 @@ class NagadSandboxProvider(PaymentProvider):
     # --- create ---------------------------------------------------------------
     def create(self, *, order, amount: str) -> CreateResult:
         url = (
-            f"{self.base_url}/check-out/initialize/{self.merchant_id}"
-            f"/{order.order_number}"
+            f"{self.base_url}/remote-payment-gateway-1.0/check-out/initialize/"
+            f"{self.merchant_id}/{order.order_number}"
         )
         # Nagad expects a flat form-encoded body in many implementations
         # but the JSON variant is supported by the sandbox. If production
@@ -86,7 +94,7 @@ class NagadSandboxProvider(PaymentProvider):
         # In sandbox, complete is a no-op since the gateway auto-completes
         # the challenge. We jump straight to verify.
         verify = post_json(
-            f"{self.base_url}/check-out/verify/{payment_id}",
+            f"{self.base_url}/remote-payment-gateway-1.0/check-out/verify/{payment_id}",
             {},
             headers={
                 "merchantId": self.merchant_id,
