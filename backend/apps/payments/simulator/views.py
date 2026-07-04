@@ -176,7 +176,7 @@ def bkash_hosted(request: HttpRequest, payment_id: str) -> HttpResponse:
         "submit_url": reverse("payments_simulator:bkash_submit", args=[payment_id]),
         "cancel_url": reverse("payments_simulator:bkash_cancel", args=[payment_id]),
     }
-    return render(request, "simulator/hosted.html", context)
+    return render(request, "hosted.html", context)
 
 
 @csrf_exempt
@@ -213,7 +213,7 @@ def bkash_hosted_submit(request: HttpRequest, payment_id: str) -> HttpResponse:
             "submit_url": reverse("payments_simulator:bkash_submit", args=[payment_id]),
             "cancel_url": reverse("payments_simulator:bkash_cancel", args=[payment_id]),
         }
-        return render(request, "simulator/hosted.html", ctx)
+        return render(request, "hosted.html", ctx)
 
     if payment.stage == "AwaitsOtp":
         if otp != payment.otp:
@@ -341,7 +341,7 @@ def nagad_hosted(request: HttpRequest, payment_id: str) -> HttpResponse:
         payment.stage = "AwaitsNumber"
     return render(
         request,
-        "simulator/hosted.html",
+        "hosted.html",
         {
             "payment_id": payment_id,
             "order_number": payment.order_number,
@@ -392,7 +392,7 @@ def _render_pin(request: HttpRequest, payment) -> HttpResponse:
     """Render the PIN step. Only used by bKash; Nagad skips this stage."""
     return render(
         request,
-        "simulator/hosted.html",
+        "hosted.html",
         {
             "payment_id": payment.payment_id,
             "order_number": payment.order_number,

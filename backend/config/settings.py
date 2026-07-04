@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     "apps.comparison",
     "apps.notifications",
     "apps.policies",
+    "apps.payments",
+    "apps.payments.simulator",
 ]  # end INSTALLED_APPS
 
 # --- App init -----------------------------------------------------------------
@@ -219,3 +221,54 @@ if (
         "(use a Gmail *App Password* — https://myaccount.google.com/apppasswords).",
         EMAIL_BACKEND,
     )
+
+# --- Payments -----------------------------------------------------------------
+# bKash / Nagad payment gateway configuration.
+#
+# Settings:
+#   FEATURE_PAYMENT_METHODS  - comma-separated list of provider codes the
+#                              customer-facing checkout will accept. Default
+#                              enables both.
+#   BKASH_BASE_URL / NAGAD_BASE_URL
+#                            - the gateway origin + mount path. For local dev
+#                              these point at the simulator on :8001; for
+#                              real sandboxes use https://tokenized.pay.bka.sh
+#                              and https://api.mynagad.com respectively.
+#   BKASH_USERNAME / BKASH_PASSWORD / BKASH_APP_KEY / BKASH_APP_SECRET
+#   NAGAD_MERCHANT_ID / NAGAD_MERCHANT_KEY
+#                            - sandbox credentials. bKash's sandbox values are
+#                              public; Nagad publishes test merchant creds
+#                              too. Override in .env for production.
+#   PUBLIC_BASE_URL          - the absolute origin the gateway should
+#                              callback into. Same value as HUB_BASE_URL in
+#                              development, since the simulator treats them
+#                              as one origin.
+FEATURE_PAYMENT_METHODS = config(
+    "FEATURE_PAYMENT_METHODS",
+    default="bkash,nagad",
+    cast=Csv(),
+)
+PUBLIC_BASE_URL = config(
+    "PUBLIC_BASE_URL",
+    default=HUB_BASE_URL,
+)
+BKASH = {
+    "BASE_URL": config(
+        "BKASH_BASE_URL",
+        default="https://tokenized.pay.bka.sh/v1.2.0-beta/tokenized/checkout",
+    ),
+    "USERNAME": config("BKASH_USERNAME", default="sandboxUsername"),
+    "PASSWORD": config("BKASH_PASSWORD", default="sandboxPassword"),
+    "APP_KEY": config("BKASH_APP_KEY", default="sandboxAppKey"),
+    "APP_SECRET": config("BKASH_APP_SECRET", default="sandboxAppSecret"),
+}
+NAGAD = {
+    "BASE_URL": config(
+        "NAGAD_BASE_URL",
+        default="https://api.mynagad.com",
+    ),
+    "MERCHANT_ID": config("NAGAD_MERCHANT_ID", default="sandboxMerchantId"),
+    "MERCHANT_KEY": config("NAGAD_MERCHANT_KEY", default="sandboxMerchantKey"),
+    "MERCHANT_PRIVATE_KEY": config("NAGAD_MERCHANT_PRIVATE_KEY", default=""),
+    "MERCHANT_PUBLIC_KEY": config("NAGAD_MERCHANT_PUBLIC_KEY", default=""),
+}

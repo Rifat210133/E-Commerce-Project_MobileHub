@@ -38,6 +38,21 @@ urlpatterns = [
         "api/admin/returns/",
         include("apps.orders.admin_urls"),
     ),
+    # Online payments (bKash / Nagad) — customer-facing endpoints.
+    # The ``apps.payments.urls`` module exposes:
+    #   POST /api/payments/<provider>/create/
+    #   POST /api/payments/<provider>/execute/
+    #   GET  /api/payments/<provider>/return/
+    # for each registered provider (bkash, nagad).
+    path("api/payments/", include("apps.payments.urls")),
+    # Local payment-gateway simulator (bKash / Nagad sandboxes).
+    # The simulator's provider adapters point at:
+    #   BKASH_BASE_URL=http://127.0.0.1:<port>/sim/bkash
+    #   NAGAD_BASE_URL=http://127.0.0.1:<port>/sim/nagad
+    # and the hosted checkout pages live at /sim/<provider>/hosted/<id>/.
+    # Mounted on the same hub project; just on a different port for the
+    # "different origin" feel of the real gateways.
+    path("sim/", include("apps.payments.simulator.urls")),
 ]  # end urlpatterns
 
 if settings.DEBUG:
