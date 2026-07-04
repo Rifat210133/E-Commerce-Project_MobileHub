@@ -28,8 +28,9 @@ import re
 import time
 import uuid
 
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -410,6 +411,11 @@ def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -
     link back to the order page so the demo flows naturally."""
     color = "#10B981" if approved else "#E2136E"
     label = "Payment successful" if approved else "Payment failed"
+    # The simulator runs on its own port (default :8001); relative paths
+    # like "/orders/<n>" would resolve against the simulator's origin and
+    # 404 there. Always send the customer back to the hub's absolute URL.
+    hub_base = (settings.HUB_BASE_URL or "http://127.0.0.1:8000").rstrip("/")
+    order_url = f"{hub_base}/orders/{order_number}"
     return HttpResponse(
         f"""<!doctype html>
 <html><head><meta charset='utf-8'><title>{label}</title>
@@ -427,20 +433,23 @@ def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -
   <h2 style='color:{color}'>{label}</h2>
   <p>Order <strong>{order_number}</strong></p>
   <button onclick="window.close();">Close this tab</button>
-  <a href='/orders/{order_number}'>Or view the order in MobileHub</a>
+  <a href='{order_url}'>Or view the order in MobileHub</a>
 </div>
 <script>
   // Tell the opener to reload its order page so it picks up the fresh
   // paid_at the polling loop just wrote. We use location.reload() (not
   // location.href = ...) because navigating to a new URL doesn't always
   // re-run useEffect on a SPA route — the user would still see Pending.
+  // Order URL is absolute (cross-origin from this simulator tab) so the
+  // opener — which lives on the hub origin — actually loads the page.
+  var orderUrl = '{order_url}';
   if (window.opener) {{
     try {{
-      window.opener.location.replace('/orders/{order_number}?_t=' + Date.now());
+      window.opener.location.replace(orderUrl + '?_t=' + Date.now());
       setTimeout(function () {{ window.close(); }}, 400);
     }} catch (e) {{}}
   }} else {{
-    setTimeout(function () {{ window.location.href = '/orders/{order_number}'; }}, 800);
+    setTimeout(function () {{ window.location.href = orderUrl; }}, 800);
   }}
 </script>
 </body></html>

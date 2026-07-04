@@ -17,6 +17,15 @@ SECRET_KEY = config("SECRET_KEY", default="dev-insecure-secret-key")
 DEBUG = config("DEBUG", default=False, cast=bool)
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
+# Absolute origin of the MobileHub backend / API. The bKash / Nagad
+# simulator (apps/payments/simulator) runs on a separate port and uses
+# this to redirect customers back to the correct app origin after a
+# hosted-page approval — a relative URL like "/orders/<n>" would
+# resolve against the simulator's origin and hit the simulator's own
+# 404 page. Set HUB_BASE_URL in .env to your public origin in production
+# (e.g. https://hub.example.com).
+HUB_BASE_URL = config("HUB_BASE_URL", default="http://127.0.0.1:8000")
+
 # --- Apps ---------------------------------------------------------------------
 INSTALLED_APPS = [
     "django.contrib.admin",
