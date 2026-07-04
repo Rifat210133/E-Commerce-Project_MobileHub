@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ provider_label }} — Secure payment for order {{ order_number }}</title>
+  <style>
+    /* Inline the styles so this single HTML file renders correctly
+       whether it's served by runserver, gunicorn, or a CDN-style static
+       host. No external assets — keeps the demo reliable. */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6fb;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .frame {
+      width: 100%; max-width: 380px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(8, 13, 40, 0.08);
+      overflow: hidden;
+    }
+    .brand {
+      background: {% if provider == 'bkash' %}#E2136E{% else %}#ED1C24{% endif %};
+      color: white;
+      padding: 28px 24px 36px;
+      text-align: center;
+    }
+    .brand h1 {
+      font-size: 26px; letter-spacing: 1px;
+      text-transform: lowercase;
+      font-weight: 700;
+    }
+    .brand h1::first-letter { text-transform: uppercase; }
+    .order-info {
+      background: white;
+      margin: -16px 16px 0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      font-size: 14px;
+      display: flex; justify-content: space-between;
+    }
+    .order-info .label { color: #888; }
+    .order-info .value { font-weight: 600; color: #1a1a2e; }
+    .steps {
+      padding: 22px 24px 8px;
+      font-size: 13px;
+      color: #999;
+    }
+    .step { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+    .step .dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #eee; color: #aaa;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 12px;
+    }
+    .step.active .dot {
+      background: {% if provider == 'bkash' %}#E2136E{% else %}#ED1C24{% endif %};
+      color: white;
+    }
+    .step.active { color: #1a1a2e; font-weight: 600; }
+    .step.done .dot {
+      background: #10B981; color: white;
+    }
+    form {
+      padding: 24px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    input[type=text], input[type=password] {
+      width: 100%;
+      padding: 14px;
+      border: 1.5px solid #e0e2ea;
+      border-radius: 8px;
+      font-size: 16px;
+      letter-spacing: 2px;
+      transition: border-color 0.15s;
+    }
+    input:focus { outline: none; border-color: {% if provider == 'bkash' %}#E2136E{% else %}#ED1C24{% endif %}; }
+    .actions { display: flex; gap: 12px; margin-top: 20px; }
+    button.primary {
+      flex: 1; padding: 14px;
+      background: {% if provider == 'bkash' %}#E2136E{% else %}#ED1C24{% endif %};
+      color: white;
+      border: 0; border-radius: 8px;
+      font-size: 16px; font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary:hover { filter: brightness(1.05); }
+    button.secondary {
+      padding: 14px 20px;
+      background: white;
+      color: #555;
+      border: 1.5px solid #e0e2ea;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .hint {
+      background: #FFF7CC;
+      border-left: 4px solid #F0B400;
+      padding: 10px 14px;
+      margin: 0 24px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #6b5500;
+    }
+    .demo-footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 11px;
+      color: #aaa;
+      border-top: 1px solid #f0f0f5;
+    }
+    .badge {
+      display: inline-block;
+      background: {% if provider == 'bkash' %}#fce4ec{% else %}#fee{% endif %};
+      color: {% if provider == 'bkash' %}#E2136E{% else %}#ED1C24{% endif %};
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <div class="brand">
+      <h1>{{ provider_label }} <span class="badge">SIMULATOR</span></h1>
+      <div style="opacity:0.85; font-size: 13px; margin-top: 4px;">Secure checkout</div>
+    </div>
+
+    <div class="order-info">
+      <span class="label">Order</span>
+      <span class="value">{{ order_number }}</span>
+    </div>
+    <div class="order-info" style="margin-top: 8px;">
+      <span class="label">Amount</span>
+      <span class="value">{{ amount }} BDT</span>
+    </div>
+
+    <div class="steps">
+      {% if provider == 'bkash' %}
+        <div class="step {% if stage == 'AwaitsNumber' or stage == 'Created' %}active{% elif stage != 'Created' %}done{% endif %}">
+          <div class="dot">{% if stage != 'AwaitsNumber' and stage != 'Created' %}✓{% else %}1{% endif %}</div>
+          <div>Enter bKash Account Number</div>
+        </div>
+        <div class="step {% if stage == 'AwaitsOtp' %}active{% elif stage == 'AwaitsPin' or stage == 'Approved' %}done{% endif %}">
+          <div class="dot">{% if stage == 'AwaitsPin' or stage == 'Approved' %}✓{% else %}2{% endif %}</div>
+          <div>Verification Code (OTP)</div>
+        </div>
+        <div class="step {% if stage == 'AwaitsPin' %}active{% elif stage == 'Approved' %}done{% endif %}">
+          <div class="dot">{% if stage == 'Approved' %}✓{% else %}3{% endif %}</div>
+          <div>Enter bKash PIN</div>
+        </div>
+      {% else %}
+        <div class="step {% if stage == 'AwaitsNumber' or stage == 'Created' %}active{% elif stage != 'Created' and stage != 'Failed' %}done{% endif %}">
+          <div class="dot">{% if stage == 'Approved' %}✓{% else %}1{% endif %}</div>
+          <div>Enter Nagad PIN to confirm</div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if demo_otp %}
+      <div class="hint">
+        <strong>Sandbox hint:</strong> simulated OTP is
+        <strong style="letter-spacing:2px;">{{ demo_otp }}</strong>. In real life bKash sends this via SMS.
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ submit_url }}">
+      {% if provider == 'bkash' and stage == 'AwaitsNumber' or stage == 'Created' %}
+        <label for="number">{{ provider_label }} Account Number</label>
+        <input type="text" name="number" id="number" placeholder="01XXXXXXXXX" maxlength="11" required autofocus inputmode="numeric">
+        <div class="actions">
+          <button type="button" class="secondary" onclick="window.location='{{ cancel_url }}'">Cancel</button>
+          <button type="submit" class="primary">Proceed</button>
+        </div>
+      {% elif provider == 'bkash' and stage == 'AwaitsOtp' %}
+        <label for="otp">Verification Code</label>
+        <input type="text" name="otp" id="otp" placeholder="Enter 4-digit code" maxlength="6" required autofocus inputmode="numeric">
+        <div class="actions">
+          <button type="button" class="secondary" onclick="window.location='{{ cancel_url }}'">Cancel</button>
+          <button type="submit" class="primary">Verify</button>
+        </div>
+      {% elif provider == 'bkash' and stage == 'AwaitsPin' %}
+        <label for="pin">bKash PIN</label>
+        <input type="password" name="pin" id="pin" placeholder="Enter PIN" maxlength="6" required autofocus inputmode="numeric">
+        <div class="actions">
+          <button type="button" class="secondary" onclick="window.location='{{ cancel_url }}'">Cancel</button>
+          <button type="submit" class="primary">Confirm Payment</button>
+        </div>
+      {% else %}
+        <label for="pin">Nagad PIN</label>
+        <input type="password" name="pin" id="pin" placeholder="Enter Nagad PIN" maxlength="6" required autofocus inputmode="numeric">
+        <p style="font-size:12px; color:#888; margin-top:8px;">
+          Sandbox test PINs: <strong>12345</strong> (success) or <strong>99999</strong> (decline).
+        </p>
+        <div class="actions">
+          <button type="button" class="secondary" onclick="window.location='{{ cancel_url }}'">Cancel</button>
+          <button type="submit" class="primary">Confirm</button>
+        </div>
+      {% endif %}
+    </form>
+
+    <div class="demo-footer">
+      MobileHub · bKash/Nagad Simulator · No real money is moved. For development and academic demo only.
+    </div>
+  </div>
+</body>
+</html>

@@ -10,6 +10,42 @@ import { fmt } from "../lib/format";
 
 const TIMELINE = ["pending", "confirmed", "processing", "shipped", "delivered"];
 
+// Centralizes the label/icon for the order detail page's Payment block
+// so adding a new provider is a one-line change. Returns null when the
+// method is unknown so we fall through to the unpaid-warning branch.
+function PaymentBadge({ method }) {
+  if (method === "bkash") {
+    return (
+      <div className="flex items-center gap-2 text-body-md text-ink-muted">
+        <Icon name="account_balance_wallet" />
+        <span>bKash</span>
+      </div>
+    );
+  }
+  if (method === "nagad") {
+    return (
+      <div className="flex items-center gap-2 text-body-md text-ink-muted">
+        <Icon name="account_balance_wallet" />
+        <span>Nagad</span>
+      </div>
+    );
+  }
+  if (method === "cod") {
+    return (
+      <div className="flex items-center gap-2 text-body-md text-ink-muted">
+        <Icon name="payments" />
+        <span>Cash on delivery</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 text-body-md text-ink-muted">
+      <Icon name="account_balance_wallet" />
+      <span className="capitalize">{(method || "card").replace(/_/g, " ")}</span>
+    </div>
+  );
+}
+
 function Timeline({ status }) {
   const idx = TIMELINE.indexOf(status);
   return (
@@ -352,6 +388,23 @@ export default function OrderDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderNumber]);
 
+  // The hosted payment tab finishes in a separate window. When it closes
+  // (or the user comes back to this tab) we re-fetch so paid_at flips
+  // from null → set without needing a manual reload. The popup's
+  // success page also does window.opener.location.replace(...) which
+  // already triggers this, but listening here covers the case where the
+  // user closes the popup manually instead of clicking the success page.
+  useEffect(() => {
+    const refresh = () => fetchAll();
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderNumber]);
+
   useEffect(() => {
     if (order?.items?.[0]?.product_slug) {
         recsApi.youtube(order.items[0].product_slug).then((d) => {
@@ -496,10 +549,10 @@ export default function OrderDetailPage() {
 
           <div className="card p-5">
             <h3 className="text-title-md text-ink mb-3">Payment</h3>
-            <div className="flex items-center gap-2 text-body-md text-ink-muted">
-              <Icon name={(addr.payment_method || order.payment_method) === "cod" ? "payments" : "credit_card"} />
-              <span className="capitalize">{(addr.payment_method || order.payment_method || "card").replace(/_/g, " ")}</span>
-            </div>
+            <PaymentBadge
+              method={addr.payment_method || order.payment_method}
+              paidAt={order.paid_at}
+            />
             {order.is_paid ? (
               <div className="mt-3 flex items-center gap-2 text-label-md text-accent-success">
                 <Icon name="verified" size={18} />
@@ -509,6 +562,12 @@ export default function OrderDetailPage() {
               <div className="mt-3 flex items-center gap-2 text-label-md text-accent-warning">
                 <Icon name="hourglass_top" size={18} />
                 <span>Unpaid — pay on delivery</span>
+              </div>
+            ) : (addr.payment_method || order.payment_method) === "bkash" ||
+              (addr.payment_method || order.payment_method) === "nagad" ? (
+              <div className="mt-3 flex items-center gap-2 text-label-md text-accent-warning">
+                <Icon name="hourglass_top" size={18} />
+                <span>Unpaid — awaiting gateway confirmation</span>
               </div>
             ) : null}
           </div>

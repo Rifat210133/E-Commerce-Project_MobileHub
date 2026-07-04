@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ordersApi } from "../api";
 import api from "../api/client";
+import { createPayment, pollUntilPaid } from "../api/payments";
 import { useCartStore } from "../stores/cartStore";
 import { useUIStore } from "../stores/uiStore";
 import Icon from "../components/Icon";
@@ -9,12 +10,22 @@ import { fmt } from "../lib/format";
 
 const STEPS = ["Shipping", "Payment", "Review"];
 
+// Online payment methods that redirect to a hosted gateway page. The
+// backend keeps the order Pending and flips paid_at/paid_via when the
+// gateway's execute endpoint confirms. Anything not in this set is
+// treated as offline (pay-on-delivery, manual mark-paid by admin).
+const ONLINE_METHODS = new Set(["bkash", "nagad"]);
+
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const { items, subtotal, shipping, tax, total, reset, fetchCart } = useCartStore();
   const notify = useUIStore((s) => s.notify);
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  // Drives the "Payment in progress" panel after a redirect-based
+  // submit. The browser tab that holds the hosted gateway is the popup
+  // window; this state is the polling loop in the main tab.
+  const [pendingPayment, setPendingPayment] = useState(null);
   const [form, setForm] = useState({
     full_name: "",
     address_line1: "",
@@ -25,11 +36,10 @@ export default function CheckoutPage() {
     postal_code: "",
     country: "Bangladesh",
     phone: "",
-    payment_method: "card",
-    card_number: "",
-    card_name: "",
-    card_expiry: "",
-    card_cvc: "",
+    // "cod" is the safe default — it requires no extra UI and works
+    // even if all online gateways are temporarily disabled server-side
+    // via FEATURE_PAYMENT_METHODS.
+    payment_method: "cod",
   });
 
   // Bangladesh admin-area cascade (Division → District → Upazila), fetched
@@ -54,6 +64,43 @@ export default function CheckoutPage() {
     return districtsForDivision.find((d) => d.name === form.district)?.upazilas || [];
   }, [districtsForDivision, form.district]);
 
+  // Polling loop for the "Payment in progress" panel. Runs as long as
+  // `pendingPayment` is non-null; tears itself down when the gateway
+  // returns a terminal status (Paid / Failed / Cancelled) or the
+  // timeout elapses. Registered BEFORE any conditional return so the
+  // hook count stays stable across renders — adding hooks after an
+  // early return triggers React's "fewer hooks than expected" guard.
+  useEffect(() => {
+    if (!pendingPayment) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await pollUntilPaid(pendingPayment.provider, pendingPayment.paymentId);
+        if (cancelled) return;
+        if (result.status === "Paid") {
+          notify("Payment confirmed", "success");
+        } else if (result.status === "Failed") {
+          notify("Payment failed. You can retry from the order page.", "error");
+        } else if (result.status === "Cancelled") {
+          notify("Payment was cancelled.", "error");
+        }
+        navigate(`/orders/${result.order || pendingPayment.orderNumber}`);
+      } catch (e) {
+        if (cancelled) return;
+        notify(extractError(e) || "Payment confirmation timed out.", "error");
+        navigate(`/orders/${pendingPayment.orderNumber}`);
+      } finally {
+        if (!cancelled) setPendingPayment(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // extractError is a pure module-level helper, so omitting it from
+    // the dep list is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingPayment, navigate, notify]);
+
   // Changing a parent resets the children so we never save an inconsistent
   // (division, district, upazila) tuple.
   const onDivisionChange = (e) =>
@@ -61,16 +108,6 @@ export default function CheckoutPage() {
   const onDistrictChange = (e) =>
     setForm((f) => ({ ...f, district: e.target.value, upazila: "" }));
   const onUpazilaChange = (e) => setField("upazila", e.target.value);
-
-  if (!items.length) {
-    return (
-      <div className="container-page py-16 text-center">
-        <Icon name="shopping_cart" size={48} className="text-ink-subtle" />
-        <div className="text-headline-md text-ink mt-3">Nothing to check out</div>
-        <button onClick={() => navigate("/catalog")} className="btn-primary mt-5">Browse phones</button>
-      </div>
-    );
-  }
 
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -142,6 +179,43 @@ const submit = async () => {
       await reset();
       await fetchCart();
       notify("Order placed successfully", "success");
+
+      // For bKash / Nagad the order is created in Pending state. We then
+      // ask the payments app to issue a hosted-page URL with the gateway,
+      // open it in a new tab, and poll execute() until the gateway
+      // confirms. On success we route the main tab to the order detail
+      // page; the user can close the popup when they're done.
+      if (ONLINE_METHODS.has(form.payment_method)) {
+        try {
+          const session = await createPayment(form.payment_method, order.order_number);
+          const popup = window.open(session.redirect_url, "_blank", "noopener,noreferrer");
+          if (!popup) {
+            notify(
+              "Pop-up blocked. Please allow pop-ups for this site to complete payment.",
+              "error"
+            );
+          }
+          setPendingPayment({
+            provider: form.payment_method,
+            paymentId: session.payment_id,
+            orderNumber: order.order_number,
+          });
+          // Don't navigate yet — the polling loop below handles the
+          // redirect when the gateway confirms.
+          return;
+        } catch (e) {
+          // Order is already created; surface the error and let the user
+          // either retry payment from the order page or contact support.
+          notify(
+            `Order placed (${order.order_number}) but the payment gateway could not be opened. ` +
+              "You can retry from the order page.",
+            "error"
+          );
+          navigate(`/orders/${order.order_number}`);
+          return;
+        }
+      }
+
       navigate(`/orders/${order.order_number}`);
     } catch (e) {
       notify(extractError(e), "error");
@@ -152,6 +226,16 @@ const submit = async () => {
 
   return (
     <div className="container-page py-8">
+      {items.length === 0 ? (
+        <div className="py-16 text-center">
+          <Icon name="shopping_cart" size={48} className="text-ink-subtle" />
+          <div className="text-headline-md text-ink mt-3">Nothing to check out</div>
+          <button onClick={() => navigate("/catalog")} className="btn-primary mt-5">
+            Browse phones
+          </button>
+        </div>
+      ) : (
+        <>
       <div className="mb-8">
         <div className="eyebrow text-primary mb-1">Checkout</div>
         <h1 className="text-headline-lg text-ink">Secure checkout</h1>
@@ -176,7 +260,26 @@ const submit = async () => {
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         <div className="card p-6">
-          {step === 0 && (
+          {pendingPayment && (
+            <div className="space-y-4 text-center py-6">
+              <Icon name="progress_activity" size={48} className="text-primary mx-auto animate-spin" />
+              <div className="text-title-lg text-ink">Waiting for payment confirmation</div>
+              <div className="text-body-md text-ink-muted max-w-md mx-auto">
+                Complete the payment in the {pendingPayment.provider === "bkash" ? "bKash" : "Nagad"} tab that just opened.
+                This page will update automatically once the gateway confirms.
+              </div>
+              <div className="text-label-md text-ink-muted">
+                Order <span className="text-ink">{pendingPayment.orderNumber}</span>
+              </div>
+              <button
+                onClick={() => navigate(`/orders/${pendingPayment.orderNumber}`)}
+                className="btn-ghost mt-2"
+              >
+                <Icon name="arrow_forward" size={20} /> Go to order page
+              </button>
+            </div>
+          )}
+          {!pendingPayment && step === 0 && (
             <div className="space-y-4">
               <div className="text-title-lg text-ink mb-2">Shipping address</div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -255,8 +358,8 @@ const submit = async () => {
               <div className="text-title-lg text-ink mb-2">Payment method</div>
               <div className="grid sm:grid-cols-3 gap-3">
                 {[
-                  { v: "card", label: "Credit card", icon: "credit_card" },
-                  { v: "paypal", label: "PayPal", icon: "account_balance_wallet" },
+                  { v: "bkash", label: "bKash", icon: "account_balance_wallet" },
+                  { v: "nagad", label: "Nagad", icon: "account_balance_wallet" },
                   { v: "cod", label: "Cash on delivery", icon: "payments" },
                 ].map((m) => (
                   <button
@@ -269,24 +372,11 @@ const submit = async () => {
                   </button>
                 ))}
               </div>
-              {form.payment_method === "card" && (
-                <div className="grid sm:grid-cols-2 gap-4 mt-4">
-                  <div className="sm:col-span-2">
-                    <div className="label">Card number</div>
-                    <input className="input" placeholder="4242 4242 4242 4242" value={form.card_number} onChange={(e) => setField("card_number", e.target.value)} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <div className="label">Name on card</div>
-                    <input className="input" value={form.card_name} onChange={(e) => setField("card_name", e.target.value)} />
-                  </div>
-                  <div>
-                    <div className="label">Expiry</div>
-                    <input className="input" placeholder="MM/YY" value={form.card_expiry} onChange={(e) => setField("card_expiry", e.target.value)} />
-                  </div>
-                  <div>
-                    <div className="label">CVC</div>
-                    <input className="input" placeholder="123" value={form.card_cvc} onChange={(e) => setField("card_cvc", e.target.value)} />
-                  </div>
+              {ONLINE_METHODS.has(form.payment_method) && (
+                <div className="rounded-card border border-surface-border bg-surface-container/40 p-4 text-body-sm text-ink-muted">
+                  You will be redirected to {form.payment_method === "bkash" ? "bKash" : "Nagad"} to complete
+                  payment securely. The order will stay pending until the
+                  gateway confirms your payment.
                 </div>
               )}
               <div className="flex justify-between pt-3">
@@ -312,8 +402,8 @@ const submit = async () => {
               <div className="card p-4">
                 <div className="text-label-md text-ink-muted mb-2">Payment</div>
                 <div className="text-body-md text-ink">
-                  {form.payment_method === "card" && `Card ending in ${form.card_number.slice(-4) || "••••"}`}
-                  {form.payment_method === "paypal" && "PayPal"}
+                  {form.payment_method === "bkash" && "bKash (online — confirmed after redirect)"}
+                  {form.payment_method === "nagad" && "Nagad (online — confirmed after redirect)"}
                   {form.payment_method === "cod" && "Cash on delivery"}
                 </div>
               </div>
@@ -363,6 +453,8 @@ const submit = async () => {
           </div>
         </aside>
       </div>
+        </>
+      )}
     </div>
   );
 }
