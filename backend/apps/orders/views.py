@@ -81,8 +81,16 @@ def cart_add(request):
 
     product = get_object_or_404(Product, pk=product_id, is_active=True)
     if product.stock < quantity:
+        # Echo back the actual stock + requested quantity so the UI can
+        # render a useful "Only N in stock — you asked for M" toast and
+        # clamp the qty selector to what's actually available.
         return Response(
-            {"detail": "Not enough stock."}, status=status.HTTP_400_BAD_REQUEST
+            {
+                "detail": "Not enough stock.",
+                "available": product.stock,
+                "requested": quantity,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     cart = _get_or_create_cart(request.user)

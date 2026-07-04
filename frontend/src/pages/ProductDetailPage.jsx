@@ -398,6 +398,20 @@ export default function ProductDetailPage() {
 
   const inCompare = compare.has?.(product.id);
 
+  // Compose a useful toast for any add-to-cart failure. The backend
+  // returns { detail, available, requested } on stock-exceeded; fall back
+  // to the generic detail string or a friendly default otherwise.
+  const stockErrorMessage = (err) => {
+    const data = err?.response?.data;
+    if (data && (data.available !== undefined || data.requested !== undefined)) {
+      const avail = Number(data.available ?? 0);
+      const req = Number(data.requested ?? qty);
+      if (avail <= 0) return "Out of stock — can't add this product to your cart.";
+      return `Only ${avail} in stock — you asked for ${req}.`;
+    }
+    return data?.detail || "Could not add to cart";
+  };
+
   const handleAdd = async () => {
     if (!isAuth) {
       navigate("/login", { state: { from: { pathname: `/product/${slug}` } } });
@@ -406,8 +420,8 @@ export default function ProductDetailPage() {
     try {
       await addToCart(product.id, qty);
       notify(`Added ${qty} × ${product.name} to cart`, "success");
-    } catch {
-      notify("Could not add to cart", "error");
+    } catch (err) {
+      notify(stockErrorMessage(err), "error");
     }
   };
 
@@ -419,8 +433,8 @@ export default function ProductDetailPage() {
     try {
       await addToCart(product.id, qty);
       navigate("/checkout");
-    } catch {
-      notify("Could not start checkout", "error");
+    } catch (err) {
+      notify(stockErrorMessage(err), "error");
     }
   };
 
@@ -631,22 +645,51 @@ export default function ProductDetailPage() {
             <>
               <div className="mt-7 flex items-center gap-4">
                 <div className="flex items-center border border-surface-border rounded-sm overflow-hidden">
-                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="px-3 h-11 hover:bg-surface-alt">
+                  <button
+                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    className="px-3 h-11 hover:bg-surface-alt disabled:opacity-50 disabled:hover:bg-transparent"
+                    disabled={qty <= 1}
+                    aria-label="Decrease quantity"
+                  >
                     <Icon name="remove" />
                   </button>
                   <input
                     value={qty}
-                    onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-                    className="w-14 h-11 text-center border-x border-surface-border"
+                    type="number"
+                    min={1}
+                    max={Math.max(1, Number(product?.stock || 0))}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      const cap = Math.max(1, Number(product?.stock || 0));
+                      const v = Number.isFinite(raw) ? raw : 1;
+                      setQty(Math.min(Math.max(1, v), cap));
+                    }}
+                    className="w-14 h-11 text-center border-x border-surface-border [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
-                  <button onClick={() => setQty((q) => q + 1)} className="px-3 h-11 hover:bg-surface-alt">
+                  <button
+                    onClick={() => setQty((q) => Math.min(q + 1, Number(product?.stock || 1)))}
+                    className="px-3 h-11 hover:bg-surface-alt disabled:opacity-50 disabled:hover:bg-transparent"
+                    disabled={qty >= Number(product?.stock || 0)}
+                    aria-label="Increase quantity"
+                  >
                     <Icon name="add" />
                   </button>
                 </div>
-                <button onClick={handleAdd} className="btn-primary flex-1">
-                  <Icon name="shopping_cart" size={20} /> Add to cart
+                <button
+                  onClick={handleAdd}
+                  className="btn-primary flex-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={Number(product?.stock || 0) <= 0}
+                >
+                  <Icon name="shopping_cart" size={20} />
+                  {Number(product?.stock || 0) <= 0 ? "Out of stock" : "Add to cart"}
                 </button>
-                <button onClick={handleBuyNow} className="btn-gold">Buy now</button>
+                <button
+                  onClick={handleBuyNow}
+                  className="btn-gold disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={Number(product?.stock || 0) <= 0}
+                >
+                  Buy now
+                </button>
               </div>
               <div className="mt-3 flex gap-3">
                 <button
