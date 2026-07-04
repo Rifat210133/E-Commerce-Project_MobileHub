@@ -74,6 +74,27 @@
   .chip-gold {
     @apply chip bg-accent-gold/10 text-accent-gold;
   }
+  /* Membership-tier chips. Keep on-brand — gold/platinum/elite/standard
+     each get a distinct, readable color pulled from the accent + primary
+     palettes defined in tailwind.config.js. */
+  .chip-neutral {
+    @apply chip bg-surface-container text-ink-muted;
+  }
+  .chip-warning {
+    @apply chip bg-accent-warning/10 text-accent-warning;
+  }
+  .chip-info {
+    @apply chip bg-accent-info/10 text-accent-info;
+  }
+  .chip-success {
+    @apply chip bg-accent-success/10 text-accent-success;
+  }
+  .chip-danger {
+    @apply chip bg-accent-danger/10 text-accent-danger;
+  }
+  .chip-primary {
+    @apply chip bg-primary-50 text-primary;
+  }
   .badge {
     @apply inline-flex items-center justify-center rounded-xs
       px-2 py-0.5 text-label-sm font-medium;

@@ -56,9 +56,15 @@ class AdminCustomerSerializer(serializers.Serializer):
     lifetime_value = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
 
     def get_membership_tier(self, obj):
+        # Tier must come from the user's actual paid spend, not the static
+        # ``Profile.membership_tier`` column — that field is only kept for
+        # back-compat/admin overrides and is never written to as orders
+        # get paid. ``computed_tier`` is the live, derived value (Gold at
+        # ৳25,000 lifetime paid, Platinum at ৳75,000) and is what the
+        # storefront + profile endpoints already show.
         profile = getattr(obj, "profile", None)
-        if profile is not None and getattr(profile, "membership_tier", None):
-            return profile.membership_tier.lower()
+        if profile is not None and hasattr(profile, "computed_tier"):
+            return profile.computed_tier.lower()
         return "standard"
 
 

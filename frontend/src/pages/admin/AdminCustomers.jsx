@@ -5,6 +5,22 @@ import Spinner from "../../components/Spinner";
 import EmptyState from "../../components/EmptyState";
 import Icon from "../../components/Icon";
 
+// Membership tier → chip color + Material Symbol. The backend ships the
+// tier lower-cased (gold / platinum / standard / elite), and the live
+// value comes from `Profile.computed_tier` (paid lifetime spend bucket).
+// Colors stay on-brand: brand-primary for Platinum (premium anchor),
+// accent-gold for Gold, accent-info for Elite (legacy), neutral for
+// Standard. An icon is included so the pill reads at a glance, not just
+// by hue (helps in dark mode / color-blind contexts).
+const TIER_BADGE = {
+  standard: { chip: "chip-neutral", icon: "person" },
+  gold: { chip: "chip-warning", icon: "workspace_premium" },
+  platinum: { chip: "chip-primary", icon: "diamond" },
+  elite: { chip: "chip-info", icon: "shield" },
+};
+
+const tierBadge = (t) => TIER_BADGE[(t || "standard").toLowerCase()] || TIER_BADGE.standard;
+
 export default function AdminCustomers() {
   const [data, setData] = useState(null);
   const [q, setQ] = useState("");
@@ -72,9 +88,15 @@ export default function AdminCustomers() {
                     <td className="px-4 py-3 text-right text-ink">{fmt.compact(c.order_count ?? 0)}</td>
                     <td className="px-4 py-3 text-right font-medium text-ink">{fmt.money(c.lifetime_value ?? 0)}</td>
                     <td className="px-4 py-3 text-right">
-                      <span className={`chip ${c.membership_tier === "elite" ? "chip-warning" : "chip-neutral"} capitalize`}>
-                        {c.membership_tier || "standard"}
-                      </span>
+                      {(() => {
+                        const tier = tierBadge(c.membership_tier);
+                        return (
+                          <span className={`chip ${tier.chip} capitalize`}>
+                            <Icon name={tier.icon} size={14} />
+                            {c.membership_tier || "standard"}
+                          </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
