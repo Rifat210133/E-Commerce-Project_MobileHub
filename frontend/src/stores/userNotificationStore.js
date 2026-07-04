@@ -4,16 +4,20 @@ import { notificationsApi } from "../api";
 /**
  * Customer notification store + polling.
  *
- * Drives the navbar bell: every 30s we fetch the customer's latest
+ * Drives the navbar bell: every 10s we fetch the customer's latest
  * notifications (placement, paid, status updates) and update the unread
  * badge. Newly-arrived rows also surface as toasts via `notify` in the
  * component itself. Polling lifecycle is started by the bell component
  * (`useEffect`) and torn down on unmount/logout.
  *
+ * We also refresh immediately on visibilitychange / window focus so a
+ * customer who switches back to the tab (e.g. after closing the bKash
+ * popup) sees the new notification without waiting for the next tick.
+ *
  * Kept separate from `useNotificationStore` (the admin one) so admin and
  * customer polling never collide.
  */
-const POLL_MS = 30_000;
+const POLL_MS = 10_000;
 
 export const useUserNotificationStore = create((set, get) => ({
   notifications: [],
@@ -82,13 +86,30 @@ export const useUserNotificationStore = create((set, get) => ({
       get().fetch().catch(() => {});
     }, POLL_MS);
     set({ _timer: t });
+
+    // Refresh on tab focus / visibilitychange. The first fetch already
+    // happens in `start()`, this is the "user came back" path — without
+    // it a customer returning from another tab could wait the full
+    // POLL_MS interval before seeing the new "Order Paid" notification.
+    if (typeof window !== "undefined") {
+      const onFocus = () => get().fetch().catch(() => {});
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", onFocus);
+      get()._cleanupFocus = () => {
+        window.removeEventListener("focus", onFocus);
+        document.removeEventListener("visibilitychange", onFocus);
+      };
+    }
   },
 
   stop: () => {
     const t = get()._timer;
     if (t) clearInterval(t);
+    const cleanup = get()._cleanupFocus;
+    if (cleanup) cleanup();
     set({
       _timer: null,
+      _cleanupFocus: null,
       notifications: [],
       unreadCount: 0,
       open: false,

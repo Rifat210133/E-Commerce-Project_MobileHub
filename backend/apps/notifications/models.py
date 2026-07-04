@@ -10,11 +10,19 @@ class Notification(models.Model):
     dashboard can light up a bell badge and show a toast/drawer.
     """
 
+    # Keep in sync with all callers in apps/notifications/signals.py and
+    # apps/orders/views.py. Anything emitted to the DB should be in this
+    # tuple so serializers/admin filters don't silently drop valid rows.
     KIND_CHOICES = (
         ("order_placed", "Order placed"),
         ("order_paid", "Order paid"),
         ("order_status", "Order status changed"),
+        ("order_received", "Order confirmed received by customer"),
         ("low_stock", "Low stock alert"),
+        ("return_requested", "Return requested"),
+        ("return_approved", "Return approved"),
+        ("return_rejected", "Return rejected"),
+        ("return_refunded", "Return refunded"),
     )
 
     LEVEL_CHOICES = (

@@ -162,17 +162,29 @@ def checkout(request):
             {"detail": "Your cart is empty."}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Online payments (card / PayPal) are captured at checkout time, so the
-    # order is auto-confirmed and counts toward revenue immediately. Cash on
-    # delivery stays Pending until the admin manually confirms receipt.
+    # Online payments (bKash / Nagad) redirect the customer to a hosted
+    # page and stay Pending until the /execute endpoint confirms. We
+    # intentionally do NOT mark paid here — the PaymentAttempt /execute
+    # flow flips paid_at + paid_via + status when the provider confirms.
+    # Cash on delivery also stays Pending until an admin marks it paid.
     payment_method = (request.data.get("payment_method") or "cod").lower()
-    is_online_payment = payment_method in {"card", "paypal"}
-    initial_status = "Confirmed" if is_online_payment else "Pending"
-    initial_notes = (
-        f"Payment received via {payment_method.title()}."
-        if is_online_payment
-        else "Awaiting admin review (cash on delivery)."
-    )
+    if payment_method == "cod":
+        initial_status = "Pending"
+        initial_notes = "Awaiting admin review (cash on delivery)."
+    elif payment_method in {"bkash", "nagad"}:
+        initial_status = "Pending"
+        initial_notes = (
+            f"Redirected to {payment_method.title()} gateway. "
+            "Awaiting payment confirmation."
+        )
+    else:
+        # Unknown / unsupported method. Stay Pending and let the admin
+        # clean up — safer than rejecting at checkout, which would force
+        # the customer to redo address entry.
+        initial_status = "Pending"
+        initial_notes = (
+            f"Unknown payment method '{payment_method}'. Admin will follow up."
+        )
 
     with transaction.atomic():
         snap = [_serialize_product_snapshot(i.product, i.quantity) for i in items]
@@ -182,11 +194,11 @@ def checkout(request):
         # totals stay consistent with the displayed Total.
         tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
         total = subtotal + SHIPPING_FEE + tax
-        # Online payments are captured at checkout → mark paid immediately so
-        # revenue analytics reflect them. COD orders stay unpaid until an
-        # admin confirms receipt via the mark-paid endpoint.
-        paid_at = timezone.now() if is_online_payment else None
-        paid_via = payment_method if is_online_payment else ""
+        # No payment method is captured at checkout anymore — bKash/Nagad
+        # only confirm via /execute, and COD via the admin mark-paid
+        # endpoint. paid_at + paid_via are filled in by those flows.
+        paid_at = None
+        paid_via = ""
         order = Order.objects.create(
             order_number=_generate_order_number(),
             user=request.user,
@@ -477,6 +489,22 @@ def order_returns(request, order_number: str):
         )
     except Exception:
         pass
+
+    # Mirror the request to the customer's own bell so they get a
+    # "we received your return" confirmation immediately, matching the
+    # behavior of approve/reject/refund below.
+    _notify_customer_return(
+        order,
+        rr,
+        kind="return_requested",
+        level="info",
+        title=f"Return submitted for #{order.order_number}",
+        body=(
+            f"We received your return request for {rr.total_quantity} item(s). "
+            "Our team will review it shortly."
+        ),
+        meta={"return_id": rr.id, "status": rr.status},
+    )
 
     return Response(
         ReturnRequestSerializer(rr).data, status=status.HTTP_201_CREATED

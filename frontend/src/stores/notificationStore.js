@@ -5,13 +5,15 @@ import { adminApi } from "../api";
  * Admin notification store + polling.
  *
  * Holds the bell badge (unread_count) and the drawer feed. While the admin
- * is logged in we poll every 30s; the user (or unmount) can stop polling
+ * is logged in we poll every 10s; the user (or unmount) can stop polling
  * via `stop()` (used on logout or when the user isn't an admin).
  *
  * Newly-arrived rows are surfaced as toast notifications (via `notify`) so
- * admins see them even if they haven't opened the drawer.
+ * admins see them even if they haven't opened the drawer. We also refresh
+ * immediately on tab focus / visibilitychange so a returning admin sees
+ * new orders/returns without waiting for the next tick.
  */
-const POLL_MS = 30_000;
+const POLL_MS = 10_000;
 
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
@@ -85,12 +87,38 @@ export const useNotificationStore = create((set, get) => ({
       get().fetch().catch(() => {});
     }, POLL_MS);
     set({ _timer: t });
+
+    // Refresh immediately when the admin returns to the tab so they see
+    // new orders/returns without waiting for the next poll tick.
+    if (typeof window !== "undefined") {
+      const onFocus = () => {
+        // Skip if the tab is hidden — visibilitychange handles that case.
+        if (document.visibilityState === "hidden") return;
+        get().fetch().catch(() => {});
+      };
+      window.addEventListener("focus", onFocus);
+      document.addEventListener("visibilitychange", onFocus);
+      set({
+        _cleanupFocus: () => {
+          window.removeEventListener("focus", onFocus);
+          document.removeEventListener("visibilitychange", onFocus);
+        },
+      });
+    }
   },
 
   stop: () => {
     const t = get()._timer;
     if (t) clearInterval(t);
-    set({ _timer: null, notifications: [], unreadCount: 0, open: false });
+    const cleanup = get()._cleanupFocus;
+    if (cleanup) cleanup();
+    set({
+      _timer: null,
+      _cleanupFocus: null,
+      notifications: [],
+      unreadCount: 0,
+      open: false,
+    });
   },
 
   reset: () => set({ notifications: [], unreadCount: 0, open: false }),
