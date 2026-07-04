@@ -413,9 +413,16 @@ def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -
     label = "Payment successful" if approved else "Payment failed"
     # The simulator runs on its own port (default :8001); relative paths
     # like "/orders/<n>" would resolve against the simulator's origin and
-    # 404 there. Always send the customer back to the hub's absolute URL.
-    hub_base = (settings.HUB_BASE_URL or "http://127.0.0.1:8000").rstrip("/")
-    order_url = f"{hub_base}/orders/{order_number}"
+    # hit Django's 404 (the hub has no SPA fallback during dev). Always
+    # send the customer back to the React app's absolute URL — the Vite
+    # dev origin in development, the same as HUB_BASE_URL in production
+    # once Django serves the built bundle.
+    frontend_base = (
+        settings.FRONTEND_BASE_URL
+        or settings.HUB_BASE_URL
+        or "http://127.0.0.1:5173"
+    ).rstrip("/")
+    order_url = f"{frontend_base}/orders/{order_number}"
     return HttpResponse(
         f"""<!doctype html>
 <html><head><meta charset='utf-8'><title>{label}</title>

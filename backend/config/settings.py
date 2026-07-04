@@ -25,6 +25,15 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 # 404 page. Set HUB_BASE_URL in .env to your public origin in production
 # (e.g. https://hub.example.com).
 HUB_BASE_URL = config("HUB_BASE_URL", default="http://127.0.0.1:8000")
+# Origin the React app lives on. Used by the payment simulator to redirect
+# customers back to the running checkout after hosted-page approval — a
+# relative URL like "/orders/<n>" would resolve against the simulator's
+# origin and hit Django's 404 (no SPA fallback on the hub during dev).
+# In production set this to the same value as HUB_BASE_URL once Django
+# serves the built bundle.
+FRONTEND_BASE_URL = config(
+    "FRONTEND_BASE_URL", default="http://127.0.0.1:5173"
+)
 
 # --- Apps ---------------------------------------------------------------------
 INSTALLED_APPS = [
