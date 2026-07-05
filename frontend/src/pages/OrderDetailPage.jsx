@@ -345,6 +345,13 @@ export default function OrderDetailPage() {
   const [policy, setPolicy] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmingReceived, setConfirmingReceived] = useState(false);
+  // When the order API 404s — e.g. the customer was redirected to a
+  // draft-number URL like /orders/MH-D12345 instead of a real MH-#####,
+  // or the user bookmarked an order that doesn't exist — we surface an
+  // error state instead of leaving the spinner up forever. Previously
+  // the spinner condition (`if (!order) return <Spinner />`) trapped the
+  // page whenever the API rejected with no `order` set.
+  const [orderError, setOrderError] = useState(null);
   const pushToast = useUIStore((s) => s.pushToast);
 
   const confirmReceived = async () => {
@@ -368,9 +375,34 @@ export default function OrderDetailPage() {
     }
   };
 
-  const fetchAll = () => {
-    ordersApi.getOrder(orderNumber).then(setOrder);
-    returnsApi.listForOrder(orderNumber).then(setReturns).catch(() => setReturns([]));
+  const fetchAll = async () => {
+    setOrderError(null);
+    try {
+      const data = await ordersApi.getOrder(orderNumber);
+      setOrder(data);
+    } catch (err) {
+      const status = err?.response?.status;
+      const detail =
+        err?.response?.data?.detail ||
+        err?.message ||
+        "Could not load this order.";
+      // 404 is expected when the URL points at a draft number or a
+      // never-materialised attempt. Anything else is a real failure.
+      setOrderError({
+        status,
+        message:
+          status === 404
+            ? "We couldn't find that order. It may still be processing or the link is incorrect."
+            : detail,
+      });
+      setOrder(null);
+    }
+    try {
+      const r = await returnsApi.listForOrder(orderNumber);
+      setReturns(r);
+    } catch {
+      setReturns([]);
+    }
   };
 
   useEffect(() => {
@@ -451,7 +483,39 @@ export default function OrderDetailPage() {
     };
   }, [order, policy, returns]);
 
-  if (!order) return <Spinner />;
+  if (!order) {
+    if (orderError) {
+      return (
+        <div className="container-page py-16">
+          <div className="card p-8 max-w-xl mx-auto text-center">
+            <Icon name="search_off" size={48} className="text-ink-subtle mx-auto" />
+            <h1 className="text-headline-md text-ink mt-4">
+              Order not available
+            </h1>
+            <p className="text-body-md text-ink-muted mt-2">
+              {orderError.message}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <button onClick={fetchAll} className="btn-primary !py-2 !px-4">
+                <Icon name="refresh" size={16} className="-ml-1 mr-1.5" />
+                Try again
+              </button>
+              <Link to="/orders" className="btn-outline !py-2 !px-4">
+                View all orders
+              </Link>
+            </div>
+            {orderError.status === 404 && (
+              <p className="text-label-sm text-ink-subtle mt-4">
+                If you just paid, wait a few seconds and try again — the
+                order may still be materialising.
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+    return <Spinner />;
+  }
 
   const addr = order.shipping_address || {};
 

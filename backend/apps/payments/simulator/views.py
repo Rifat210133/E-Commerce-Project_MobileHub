@@ -29,9 +29,10 @@ import time
 import uuid
 
 from django.conf import settings
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -227,28 +228,39 @@ def bkash_hosted_submit(request: HttpRequest, payment_id: str) -> HttpResponse:
     if payment.stage == "AwaitsPin":
         if pin == "99999":
             payment.stage = "Failed"
-            return _render_result(request, approved=False, order_number=payment.order_number)
+            return _render_result(request, approved=False, order_number=payment.order_number, payment_id=payment.payment_id, provider=payment.provider)
         if pin != "12345":
             return HttpResponse(
                 "<h3 style='color:#E2136E'>Wrong PIN. Sandbox accepts 12345 (or 99999 to simulate failure).</h3>",
                 status=400,
             )
         payment.stage = "Approved"
-        return _render_result(request, approved=True, order_number=payment.order_number)
+        return _render_result(request, approved=True, order_number=payment.order_number, payment_id=payment.payment_id, provider=payment.provider)
 
     return HttpResponse("Unexpected stage", status=400)
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def bkash_hosted_cancel(request: HttpRequest, payment_id: str) -> HttpResponse:
     payment = state.get(payment_id)
     if payment is not None and payment.stage not in {"Approved", "Failed"}:
         payment.stage = "Failed"
-    return HttpResponse(
-        "<h3>Payment cancelled.</h3>"
-        "<p>You can return to MobileHub and try again.</p>"
-    )
+    # Mark the matching DB PaymentAttempt as Cancelled so the FE can
+    # poll-and-stop (no point polling an attempt the user has given up
+    # on) and so the admin can audit it later.
+    _cancel_db_attempt(payment_id)
+    # The customer clicks "Cancel" on a button that fires a plain GET,
+    # so we accept both verbs and always bounce them back to /checkout.
+    # The legacy flow redirected to /orders/<order_number>, but with the
+    # deferred-Order flow no Order exists yet on cancel — sending the
+    # user to /orders/UNKNOWN would just 404. /checkout keeps the cart
+    # visible and lets them retry the payment.
+    return _redirect_to_checkout()
+
+
+# ==========================================================================
+# Nagad endpoints
 
 
 # ==========================================================================
@@ -366,23 +378,27 @@ def nagad_hosted_submit(request: HttpRequest, payment_id: str) -> HttpResponse:
     # the simulator — saves three clicks per demo.
     if pin == "99999":
         payment.stage = "Failed"
-        return _render_result(request, approved=False, order_number=payment.order_number)
+        return _render_result(request, approved=False, order_number=payment.order_number, payment_id=payment.payment_id, provider=payment.provider)
     if pin != "12345":
         return HttpResponse(
             "<h3 style='color:#ED1C24'>Wrong PIN. Sandbox accepts 12345 (or 99999 to simulate failure).</h3>",
             status=400,
         )
     payment.stage = "Approved"
-    return _render_result(request, approved=True, order_number=payment.order_number)
+    return _render_result(request, approved=True, order_number=payment.order_number, payment_id=payment.payment_id, provider=payment.provider)
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def nagad_hosted_cancel(request: HttpRequest, payment_id: str) -> HttpResponse:
     payment = state.get(payment_id)
     if payment is not None and payment.stage not in {"Approved", "Failed"}:
         payment.stage = "Failed"
-    return HttpResponse("<h3>Payment cancelled.</h3>")
+    # See bkash_hosted_cancel — we redirect to /checkout so the cart is
+    # still there and the customer can retry the payment instead of
+    # bouncing off a /orders/UNKNOWN 404.
+    _cancel_db_attempt(payment_id)
+    return _redirect_to_checkout()
 
 
 # ==========================================================================
@@ -406,7 +422,143 @@ def _render_pin(request: HttpRequest, payment) -> HttpResponse:
     )
 
 
-def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -> HttpResponse:
+def _redirect_to_order(order_number: str) -> HttpResponse:
+    """Legacy helper — kept for any code path that still wants to bounce
+    to ``/orders/<order_number>``. New code should prefer
+    :func:`_redirect_to_checkout` since the deferred-Order flow means no
+    Order exists at cancel time.
+    """
+    frontend_base = (
+        settings.FRONTEND_BASE_URL
+        or settings.HUB_BASE_URL
+        or "http://127.0.0.1:5173"
+    ).rstrip("/")
+    return HttpResponseRedirect(f"{frontend_base}/orders/{order_number}")
+
+
+def _redirect_to_checkout() -> HttpResponse:
+    """Bounce the customer back to the React checkout page.
+
+    Used by the simulator's cancel buttons. In the deferred-Order flow,
+    no Order exists at cancel time, so the legacy ``/orders/<number>``
+    redirect would 404 — sending the user to ``/checkout`` instead keeps
+    the cart visible so they can retry the payment without re-entering
+    their address.
+    """
+    frontend_base = (
+        settings.FRONTEND_BASE_URL
+        or settings.HUB_BASE_URL
+        or "http://127.0.0.1:5173"
+    ).rstrip("/")
+    return HttpResponseRedirect(f"{frontend_base}/checkout")
+
+
+def _cancel_db_attempt(payment_id: str) -> None:
+    """Mark the matching DB ``PaymentAttempt`` as ``Cancelled``.
+
+    The simulator's in-memory ``state.SimPayment`` is one thing; the DB
+    PaymentAttempt is the source of truth the FE polls. Without this,
+    the poller would keep pinging ``/execute`` for a session the user
+    has already walked away from — wasteful, and the FE would block on
+    the spinner until manual refresh.
+
+    Errors are swallowed: cancel is a best-effort UX nicety; we never
+    want it to throw because the SPA is already navigating away.
+    """
+    try:
+        from apps.payments.models import PaymentAttempt as _PA
+
+        _PA.objects.filter(payment_id=payment_id).exclude(
+            status__in={"Paid", "Cancelled"}
+        ).update(status="Cancelled")
+    except Exception:
+        # Model might not import cleanly during isolated tests; never
+        # break the redirect because of an audit-log write.
+        pass
+
+
+def _resolve_real_order_number(payment_id: str, provider: str, fallback: str) -> str:
+    """Return the *real* ``MH-#####`` order_number once the gateway approves.
+
+    In the deferred-Order flow, ``payment_id`` is associated with a
+    ``PaymentAttempt`` whose ``order_number`` argument we passed in was
+    actually the ``draft_number`` (``MH-D12345``) — it isn't a real
+    Order yet. The Order is materialised by ``payment_execute`` only
+    AFTER the gateway confirms.
+
+    So before we bounce the opener back to ``/orders/<n>``, we must:
+      1. Run the same execute path the FE poller would, so any
+         transient ``Initiated`` state is forced to ``Paid`` and the
+         Order row is created.
+      2. Read the freshly-created Order's ``order_number`` off the
+         attempt (``attempt.order.order_number``).
+
+    On any failure — provider down, attempt missing, materialisation
+    refused — we keep the caller's ``fallback`` so the customer still
+    sees *some* sensible link instead of ``/orders/MH-D12345``.
+    """
+    fallback = (fallback or "").strip()
+    try:
+        from apps.payments.models import PaymentAttempt as _PA
+
+        attempt = _PA.objects.filter(
+            payment_id=payment_id, provider=provider
+        ).first()
+        if attempt is None:
+            return fallback
+        # Force the execute path so Paid state + Order materialisation
+        # happen in this request, not asynchronously.
+        if not attempt.is_terminal:
+            from apps.payments.views import payment_execute as _exec
+
+            # payment_execute is a DRF view; we can't call it directly
+            # because it expects a real DRF Request and IsAuthenticated.
+            # Re-implement the materialisation here instead — the core
+            # is _materialize_order_from_attempt, which is idempotent and
+            # already wraps itself in SELECT FOR UPDATE.
+            try:
+                from apps.payments import views as _pviews
+
+                prov_cls = _pviews._PROVIDERS.get(provider)
+                if prov_cls is not None:
+                    result = prov_cls().execute(payment_id=payment_id)
+                    attempt.raw_response = result.raw
+                    if result.status == "Paid" and attempt.status != "Paid":
+                        attempt.status = "Paid"
+                        if attempt.has_order:
+                            order = attempt.order
+                            if order.paid_at is None:
+                                order.paid_at = timezone.now()
+                                order.paid_via = provider
+                                order.status = "Confirmed"
+                                order.status_notes = (
+                                    f"Payment received via {provider.title()}."
+                                )
+                                order.save(
+                                    update_fields=[
+                                        "paid_at",
+                                        "paid_via",
+                                        "status",
+                                        "status_notes",
+                                    ]
+                                )
+                        else:
+                            _pviews._materialize_order_from_attempt(attempt)
+                        attempt.save(
+                            update_fields=["status", "raw_response", "updated_at"]
+                        )
+            except Exception:
+                # Best-effort. If execute fails here, the FE poller will
+                # retry and the Order will materialise shortly after.
+                pass
+        if attempt.has_order:
+            return attempt.order.order_number
+    except Exception:
+        pass
+    return fallback
+
+
+def _render_result(request: HttpRequest, *, approved: bool, order_number: str, payment_id: str | None = None, provider: str | None = None) -> HttpResponse:
     """Final screen the customer sees after approving/declining. Shows a
     link back to the order page so the demo flows naturally."""
     color = "#10B981" if approved else "#E2136E"
@@ -422,7 +574,27 @@ def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -
         or settings.HUB_BASE_URL
         or "http://127.0.0.1:5173"
     ).rstrip("/")
-    order_url = f"{frontend_base}/orders/{order_number}"
+
+    # In the deferred-Order flow, ``order_number`` is the *draft*
+    # number (e.g. ``MH-D12345``) — not a real Order yet. The Order
+    # only exists after payment_execute materialises it. Resolve to
+    # the real MH-##### so the opener lands on a page that 200s
+    # instead of bouncing off /orders/MH-D12345 → 404 → infinite
+    # spinner on OrderDetailPage.
+    real_order = ""
+    if approved and payment_id and provider:
+        real_order = _resolve_real_order_number(payment_id, provider, "")
+    # On failure, we deliberately do NOT redirect to /orders/<draft>
+    # — that 404s. Fall through to /orders (list) so the user at
+    # least lands on a real page.
+    target_path = (
+        f"/orders/{real_order}" if real_order else "/orders"
+    )
+    order_url = f"{frontend_base}{target_path}"
+    # ``order_number`` (the raw draft/MH-D value) is shown on the
+    # success card so the user knows which attempt succeeded — but
+    # we don't navigate to it.
+    display_number = real_order or order_number or ""
     return HttpResponse(
         f"""<!doctype html>
 <html><head><meta charset='utf-8'><title>{label}</title>
@@ -438,17 +610,19 @@ def _render_result(request: HttpRequest, *, approved: bool, order_number: str) -
 <div class='card'>
   <div class='icon'>{'✓' if approved else '✕'}</div>
   <h2 style='color:{color}'>{label}</h2>
-  <p>Order <strong>{order_number}</strong></p>
+  <p>Order <strong>{display_number}</strong></p>
   <button onclick="window.close();">Close this tab</button>
   <a href='{order_url}'>Or view the order in MobileHub</a>
 </div>
 <script>
-  // Tell the opener to reload its order page so it picks up the fresh
-  // paid_at the polling loop just wrote. We use location.reload() (not
-  // location.href = ...) because navigating to a new URL doesn't always
-  // re-run useEffect on a SPA route — the user would still see Pending.
-  // Order URL is absolute (cross-origin from this simulator tab) so the
-  // opener — which lives on the hub origin — actually loads the page.
+  // Send the opener to the freshly-materialised order page. We use
+  // ``location.replace`` (not ``location.href = ...``) because that
+  // gives us a single history entry instead of polluting back-button
+  // history with the gateway return URL. The cache-buster (?_t=...)
+  // defeats the SPA's bfcache in case the user lands on the same route
+  // twice in a row. ``orderUrl`` points at /orders/<real MH-#####> on
+  // success or /orders (list) on failure — never at /orders/MH-Dxxxxx,
+  // which would 404 and trap OrderDetailPage on its spinner.
   var orderUrl = '{order_url}';
   if (window.opener) {{
     try {{

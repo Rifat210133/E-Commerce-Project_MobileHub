@@ -12,6 +12,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.dashboard.permissions import IsAdminStaff
+from apps.payments.bkash import BkashSandboxProvider
+from apps.payments.http import ProviderHTTPError
+from apps.payments.models import PaymentAttempt, generate_draft_number
+from apps.payments.nagad import NagadSandboxProvider
 from apps.products.models import Product
 
 from .models import Cart, CartItem, Order, ReturnRequest, WishList
@@ -162,69 +166,141 @@ def checkout(request):
             {"detail": "Your cart is empty."}, status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Online payments (bKash / Nagad) redirect the customer to a hosted
-    # page and stay Pending until the /execute endpoint confirms. We
-    # intentionally do NOT mark paid here — the PaymentAttempt /execute
-    # flow flips paid_at + paid_via + status when the provider confirms.
-    # Cash on delivery also stays Pending until an admin marks it paid.
     payment_method = (request.data.get("payment_method") or "cod").lower()
-    if payment_method == "cod":
-        initial_status = "Pending"
-        initial_notes = "Awaiting admin review (cash on delivery)."
-    elif payment_method in {"bkash", "nagad"}:
-        initial_status = "Pending"
-        initial_notes = (
-            f"Redirected to {payment_method.title()} gateway. "
-            "Awaiting payment confirmation."
+    is_online = payment_method in {"bkash", "nagad"}
+
+    # ------------------------------------------------------------------
+    # Pre-compute amounts and the cart snapshot. Same on every path so
+    # the FE sees consistent totals whether we materialise the Order
+    # now (COD) or hand them off to the gateway (bKash / Nagad).
+    # ------------------------------------------------------------------
+    snap = [_serialize_product_snapshot(i.product, i.quantity) for i in items]
+    subtotal = sum(Decimal(i["subtotal"]) for i in snap)
+    tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
+    total = subtotal + SHIPPING_FEE + tax
+    shipping_address = {
+        **address,
+        "payment_method": payment_method,
+        "subtotal": str(subtotal),
+        "shipping_fee": str(SHIPPING_FEE),
+        "tax": str(tax),
+        "tax_rate": str(TAX_RATE),
+    }
+
+    # ------------------------------------------------------------------
+    # COD — keep the legacy behaviour: create the Order right away,
+    # decrement stock, clear the cart. The Order stays "Pending" until
+    # the admin marks it paid; no PaymentAttempt is involved.
+    # ------------------------------------------------------------------
+    if not is_online:
+        with transaction.atomic():
+            order = Order.objects.create(
+                order_number=_generate_order_number(),
+                user=request.user,
+                items=snap,
+                total_amount=total,
+                shipping_address=shipping_address,
+                estimated_arrival=(timezone.now().date() + timedelta(days=5)),
+                status="Pending",
+                status_notes="Awaiting admin review (cash on delivery).",
+                paid_at=None,
+                paid_via="",
+            )
+            for i in items:
+                i.product.stock = max(i.product.stock - i.quantity, 0)
+                i.product.save(update_fields=["stock"])
+            cart.items.all().delete()
+        return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+    # ------------------------------------------------------------------
+    # Online payment (bKash / Nagad) — defer Order creation.
+    # Snapshot the cart + address onto a fresh PaymentAttempt, hand it
+    # to the provider's create() so the customer gets redirected to the
+    # hosted page, but DO NOT decrement stock, clear the cart, or
+    # create an Order. The Order is materialised by
+    # ``apps.payments.views.payment_execute`` only after the gateway
+    # confirms the payment. If the user abandons / cancels, the
+    # PaymentAttempt just sits in Initiated state and the cart survives.
+    # ------------------------------------------------------------------
+    from django.conf import settings as _s
+
+    if payment_method not in _s.FEATURE_PAYMENT_METHODS:
+        return Response(
+            {"detail": f"{payment_method.title()} is currently disabled."},
+            status=status.HTTP_403_FORBIDDEN,
         )
-    else:
-        # Unknown / unsupported method. Stay Pending and let the admin
-        # clean up — safer than rejecting at checkout, which would force
-        # the customer to redo address entry.
-        initial_status = "Pending"
-        initial_notes = (
-            f"Unknown payment method '{payment_method}'. Admin will follow up."
-        )
+
+    # Stock is still checked upfront so the customer doesn't reach the
+    # gateway only to bounce off a "not enough stock" error after
+    # paying. We do NOT decrement — that happens at materialisation.
+    for i in items:
+        if i.product.stock < i.quantity:
+            return Response(
+                {
+                    "detail": "Not enough stock.",
+                    "available": i.product.stock,
+                    "requested": i.quantity,
+                    "product_id": i.product.id,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    provider_cls = (
+        BkashSandboxProvider if payment_method == "bkash" else NagadSandboxProvider
+    )
+    prov = provider_cls()
+    amount_str = f"{total:.2f}"
 
     with transaction.atomic():
-        snap = [_serialize_product_snapshot(i.product, i.quantity) for i in items]
-        subtotal = sum(Decimal(i["subtotal"]) for i in snap)
-        # Tax is calculated on the merchandise subtotal only (BD VAT rules);
-        # shipping is not taxed. Rounded to 2 dp using quantize so the line
-        # totals stay consistent with the displayed Total.
-        tax = (subtotal * TAX_RATE).quantize(Decimal("0.01"))
-        total = subtotal + SHIPPING_FEE + tax
-        # No payment method is captured at checkout anymore — bKash/Nagad
-        # only confirm via /execute, and COD via the admin mark-paid
-        # endpoint. paid_at + paid_via are filled in by those flows.
-        paid_at = None
-        paid_via = ""
-        order = Order.objects.create(
-            order_number=_generate_order_number(),
+        # Create the attempt with order=NULL. The user + draft_number
+        # are what the provider stub exposes in lieu of a real Order.
+        attempt = PaymentAttempt.objects.create(
+            payment_id=f"PA-{random.randint(10**8, 10**9 - 1)}",
+            order=None,
             user=request.user,
+            provider=payment_method,
+            status="Initiated",
+            redirect_url="",
+            draft_number=generate_draft_number(),
+            amount=total,
+            payment_method=payment_method,
             items=snap,
-            total_amount=total,
-            shipping_address={
-                **address,
-                "payment_method": payment_method,
-                "subtotal": str(subtotal),
-                "shipping_fee": str(SHIPPING_FEE),
-                "tax": str(tax),
-                "tax_rate": str(TAX_RATE),
-            },
-            estimated_arrival=(timezone.now().date() + timedelta(days=5)),
-            status=initial_status,
-            status_notes=initial_notes,
-            paid_at=paid_at,
-            paid_via=paid_via,
+            shipping_address=shipping_address,
+            raw_response={},
         )
-        # Decrement stock and clear cart
-        for i in items:
-            i.product.stock = max(i.product.stock - i.quantity, 0)
-            i.product.save(update_fields=["stock"])
-        cart.items.all().delete()
+        try:
+            result = prov.create(order=attempt.as_provider_stub(), amount=amount_str)
+        except ProviderHTTPError as exc:
+            # Provider rejected before anything left the building — the
+            # attempt is discarded along with the enclosing transaction.
+            return Response(
+                {
+                    "detail": "Payment provider rejected the request.",
+                    "error": exc.body,
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
 
-    return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        attempt.payment_id = result.payment_id
+        attempt.redirect_url = result.redirect_url
+        attempt.raw_response = result.raw
+        attempt.save(update_fields=["payment_id", "redirect_url", "raw_response", "updated_at"])
+
+    # The FE opens redirect_url in a new tab and then polls
+    # ``/api/payments/{provider}/status/<payment_id>/`` until the
+    # gateway confirms. Order is created inside payment_execute.
+    return Response(
+        {
+            "payment_id": attempt.payment_id,
+            "redirect_url": attempt.redirect_url,
+            "draft_id": attempt.id,
+            "draft_number": attempt.draft_number,
+            "amount": str(attempt.amount),
+            "payment_method": payment_method,
+            "order_number": None,
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 
 @api_view(["GET"])

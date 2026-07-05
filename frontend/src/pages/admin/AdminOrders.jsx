@@ -10,6 +10,30 @@ import { useUIStore } from "../../stores/uiStore";
 
 const STATUSES = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
+// Friendly labels for `paid_via`. Values are the exact strings written by
+// apps.payments (bkash / nagad) and apps.dashboard.mark_order_paid (cod).
+const PAID_VIA_LABEL = {
+  bkash: "bKash",
+  nagad: "Nagad",
+  cod: "COD",
+};
+
+function paymentLabel(o) {
+  if (o.is_paid) {
+    const key = (o.paid_via || o.payment_method || "").toLowerCase();
+    const label = PAID_VIA_LABEL[key] || (key ? key.toUpperCase() : "");
+    return label ? `Paid • ${label}` : "Paid";
+  }
+  if (o.payment_method === "cod") return "COD • Unpaid";
+  return "—";
+}
+
+function paymentBadgeClass(o) {
+  if (o.is_paid) return "bg-accent-success/15 text-accent-success";
+  if (o.payment_method === "cod") return "bg-accent-warning/15 text-accent-warning";
+  return "bg-surface-container text-ink-muted";
+}
+
 const VARIANT_TO_CHIP = {
   success: "chip-success",
   info: "chip-info",
@@ -118,13 +142,7 @@ export default function AdminOrders() {
                     <td className="px-4 py-3 text-right font-medium text-ink">{fmt.money(o.total_amount)}</td>
                     <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
                     <td className="px-4 py-3">
-                      {o.is_paid ? (
-                        <span className="badge bg-accent-success/15 text-accent-success">Paid</span>
-                      ) : o.payment_method === "cod" ? (
-                        <span className="badge bg-accent-warning/15 text-accent-warning">COD • Unpaid</span>
-                      ) : (
-                        <span className="badge bg-surface-container text-ink-muted">—</span>
-                      )}
+                      <span className={`badge ${paymentBadgeClass(o)}`}>{paymentLabel(o)}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-3">

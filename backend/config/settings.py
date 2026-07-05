@@ -160,6 +160,16 @@ REST_FRAMEWORK = {
         # registration OTP. 5 per hour per IP keeps the door open without
         # letting anyone mail-bomb arbitrary addresses via us.
         "register-otp": "5/hour",
+        # Used by /api/auth/check-email/ — soft cap to slow down bulk
+        # enumeration of registered addresses. Set generously (per-IP, not
+        # per-email) so legitimate UI probes don't trip it.
+        "auth-check-email": "60/min",
+        # Used by /api/auth/check-identifier/ — pre-login probe that
+        # trades a little enumeration resistance for a much better UX
+        # when someone types the wrong email/username. Same ceiling as
+        # auth-check-email so a misbehaving client can't disable itself
+        # by bouncing between the two endpoints.
+        "auth-check-identifier": "60/min",
     },
 }
 

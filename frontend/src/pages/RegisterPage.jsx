@@ -38,6 +38,12 @@ export default function RegisterPage() {
   const [otpError, setOtpError] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  // When the register-page email is detected as already-registered we
+  // short-circuit the OTP request and render a friendly banner with a
+  // direct "Sign in" link. Reset back to null whenever the user edits
+  // the email field.
+  const [emailTaken, setEmailTaken] = useState(null);
+  const [emailCheckBusy, setEmailCheckBusy] = useState(false);
   const otpRefs = useRef([]);
 
   const register = useAuthStore((s) => s.register);
@@ -48,6 +54,7 @@ export default function RegisterPage() {
   const update = (k) => (e) => {
     const v = k === "agree" ? e.target.checked : e.target.value;
     setForm((s) => ({ ...s, [k]: v }));
+    if (k === "email" && emailTaken) setEmailTaken(null);
   };
 
   const sendCode = async (e) => {
@@ -64,6 +71,27 @@ export default function RegisterPage() {
     if (!form.agree) {
       notify("Please agree to the Terms and Privacy Policy.", "error");
       return;
+    }
+    // Pre-flight check: if this email already owns an account we show a
+    // friendly "email already registered" message and skip the OTP step
+    // entirely. The 404-then-generic-error path through /register/ is the
+    // wake-up call — but the user has likely already typed the OTP by the
+    // time they hit it; this catches the case earlier.
+    setEmailCheckBusy(true);
+    try {
+      const probe = await authApi.checkEmail(form.email);
+      if (probe?.exists) {
+        setEmailTaken(form.email);
+        return;
+      }
+    } catch (err) {
+      // The probe is best-effort UX — never block the OTP path on a
+      // transient failure (the backend's own duplicate-email check still
+      // runs at /register/ time). Just log and continue.
+      // eslint-disable-next-line no-console
+      console.warn("[Register] check-email probe failed", err);
+    } finally {
+      setEmailCheckBusy(false);
     }
     setSending(true);
     try {
@@ -86,6 +114,8 @@ export default function RegisterPage() {
       const d = err.response?.data;
       if (err.response?.status === 429) {
         notify("Too many code requests. Please wait a few minutes.", "error");
+      } else if (typeof flattenApiError(d) === "string" && /already/i.test(flattenApiError(d))) {
+        setEmailTaken(form.email);
       } else {
         notify(flattenApiError(d), "error");
       }
@@ -120,7 +150,25 @@ export default function RegisterPage() {
     } catch (err) {
       const d = err.response?.data;
       const msg = flattenApiError(d);
+      // The /register/ validate() raises "That code is invalid, expired,
+      // or already used." for two distinct cases: (a) the OTP really did
+      // fail / expire / get reused, or (b) the email already owns an
+      // account and the server is concealing that fact. For the user
+      // who's *just typed a 6-digit code*, the most actionable message
+      // is to confirm the duplicate-email case so they don't spin
+      // trying to resend forever.
       if (/code|otp/i.test(msg)) {
+        try {
+          const probe = await authApi.checkEmail(form.email);
+          if (probe?.exists) {
+            setOtpError(null);
+            setStep(1);
+            setEmailTaken(form.email);
+            return;
+          }
+        } catch {
+          // Probe failed — fall back to the literal backend message.
+        }
         setOtpError(msg);
       } else {
         notify(msg, "error");
@@ -263,6 +311,47 @@ export default function RegisterPage() {
                 onChange={update("email")}
                 required
               />
+              {emailTaken && (
+                <div className="mt-2 rounded-lg border border-accent-danger/30 bg-red-50 px-3 py-3 text-body-sm text-accent-danger">
+                  <p className="flex items-start gap-2 font-medium">
+                    <Icon name="error" size={16} className="mt-0.5 shrink-0" />
+                    <span>
+                      <span className="block">{emailTaken}</span>
+                      <span className="block font-normal text-ink">
+                        is already registered — sign in to that account,
+                        or use a different email address.
+                      </span>
+                    </span>
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <Link
+                      to={`/login?email=${encodeURIComponent(emailTaken)}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-white text-label-md hover:bg-primary-700"
+                    >
+                      <Icon name="login" size={14} /> Sign in
+                    </Link>
+                    <Link
+                      to="/forgot-password"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary text-primary px-3 py-1.5 text-label-md hover:bg-primary-50"
+                    >
+                      <Icon name="lock_reset" size={14} /> Forgot password
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmailTaken(null);
+                        setForm((s) => ({ ...s, email: "" }));
+                        setStep(1);
+                        setOtp(Array(OTP_LEN).fill(""));
+                        setOtpError(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-label-md text-ink-muted hover:text-ink hover:bg-surface-alt"
+                    >
+                      <Icon name="email" size={14} /> Use a different email
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="label">Password</label>

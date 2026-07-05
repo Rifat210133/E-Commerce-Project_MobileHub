@@ -10,6 +10,19 @@ export const authApi = {
   requestRegisterOtp: (email) =>
     api.post("/auth/register/otp/", { email }).then((r) => r.data),
   logout: (refresh) => api.post("/auth/logout/", { refresh }).then((r) => r.data),
+  // Probe whether an email already has an account. Used by the register
+  // page to surface a friendly "already registered — sign in instead"
+  // message before the OTP is even requested, so users don't burn a code
+  // they'll never be able to use.
+  checkEmail: (email) =>
+    api.post("/auth/check-email/", { email }).then((r) => r.data),
+  // Probe whether a *login identifier* (email or username) belongs to an
+  // active account, and whether that account has a usable password.
+  // Used by the login page so a typing "nobody@nowhere.com" sees a
+  // friendly "no account with that email — want to register?" card
+  // instead of the misleading generic "Invalid credentials." error.
+  checkIdentifier: (identifier) =>
+    api.post("/auth/check-identifier/", { identifier }).then((r) => r.data),
   me: () => api.get("/auth/me/").then((r) => r.data),
   updateProfile: (payload) => api.patch("/auth/me/", payload).then((r) => r.data),
   requestPasswordReset: (email) =>

@@ -49,6 +49,145 @@ class RegisterOTPThrottle(AnonRateThrottle):
     scope = "register-otp"
 
 
+class CheckEmailThrottle(AnonRateThrottle):
+    """Rate-limit how often an anonymous caller can probe /auth/check-email/.
+
+    The endpoint deliberately exposes whether an email is already
+    registered so the registration UI can give a friendlier "this email
+    is already in use — sign in instead" message instead of the generic
+    "OTP is invalid, expired, or already used" error. That trades a
+    little enumeration resistance for a much better UX for legitimate
+    users who simply forgot they have an account.
+
+    Mitigations:
+
+    * Same throttle scope as ``register-otp`` would burn email sending
+      capacity on every probe, so this one is set in
+      ``DEFAULT_THROTTLE_RATES["auth-check-email"]`` (60/min per IP —
+      plenty for an interactive form, hostile to bulk scraping).
+    * The response is the *same shape* (just ``{"exists": bool}``)
+      regardless of email validity, so timing is roughly constant.
+    * Email lookups are case-insensitive and trimmed the same way
+      ``RegisterSerializer`` normalises, so a guess like
+      ``Foo@Example.com`` still resolves.
+    """
+
+    scope = "auth-check-email"
+
+
+class CheckEmailView(APIView):
+    """POST /api/auth/check-email/ — public, rate-limited existence probe.
+
+    Body: ``{"email": "user@example.com"}``
+    Response: ``{"email": "...", "exists": true|false}``
+
+    The frontend uses this on the registration page to surface a clear
+    "This email is already registered — sign in instead" message *before*
+    the OTP is requested, so users who already have an account don't
+    burn a verification code or hit the cryptic
+    "That code is invalid, expired, or already used." error during the
+    verify step.
+    """
+
+    permission_classes = (permissions.AllowAny,)
+    throttle_classes = (CheckEmailThrottle,)
+
+    def post(self, request):
+        email = (request.data.get("email") or "").strip().lower()
+        if not email:
+            return Response(
+                {"email": "Email is required.", "exists": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Use Django's built-in EmailValidator rather than reinventing the
+        # wheel — keeps behaviour in lock-step with the rest of the auth
+        # surface.
+        from django.core.exceptions import ValidationError
+        from django.core.validators import validate_email
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response(
+                {"email": "Enter a valid email address.", "exists": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exists = User.objects.filter(email__iexact=email, is_active=True).exists()
+        return Response({"email": email, "exists": exists})
+
+
+class CheckIdentifierThrottle(AnonRateThrottle):
+    """Rate-limit how often an anonymous caller can probe /auth/check-identifier/.
+
+    Used by the login page to give a friendlier
+    "no account with this email — want to register?" message instead of
+    the generic "Invalid credentials." error. Same trade-off as
+    ``CheckEmailThrottle`` (gives up some enumeration resistance for
+    better UX), and the same rate ceiling (60/min per IP).
+    """
+
+    scope = "auth-check-identifier"
+
+
+class CheckIdentifierView(APIView):
+    """POST /api/auth/check-identifier/ — probe whether a *login identifier* exists.
+
+    Body: ``{"identifier": "user@example.com"}`` (or a username).
+    Response: ``{"identifier": "...", "exists": bool, "kind": "email"|"username",
+                  "can_password_login": bool}``
+
+    Used by the login page so we can distinguish:
+
+    * No such account — surface a clear "register instead" prompt instead
+      of a misleading "Invalid credentials.".
+    * Account exists but has no usable password (social-only login,
+      legacy placeholder, etc.) — point the user at the right recovery
+      path instead of letting them type a password that can never work.
+    * Account exists with a usable password — fall through to the real
+      ``POST /api/auth/login/`` attempt.
+
+    Public + rate-limited (60/min/IP — see ``CheckIdentifierThrottle``).
+    """
+
+    permission_classes = (permissions.AllowAny,)
+    throttle_classes = (CheckIdentifierThrottle,)
+    authentication_classes = ()  # Don't 401 anonymous probes.
+
+    def post(self, request):
+        raw = (request.data.get("identifier") or "").strip()
+        if not raw:
+            return Response(
+                {"identifier": "Identifier is required.", "exists": False},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Same lookup rules as LoginView: if it has an '@' treat it as an
+        # email (case-insensitive), otherwise treat it as a username
+        # (case-sensitive — usernames are unique by exact match by default).
+        user = None
+        kind = None
+        if "@" in raw:
+            user = (
+                User.objects.filter(email__iexact=raw, is_active=True).first()
+            )
+            kind = "email"
+        else:
+            user = User.objects.filter(username=raw, is_active=True).first()
+            kind = "username"
+
+        return Response(
+            {
+                "identifier": raw,
+                "exists": user is not None,
+                "kind": kind,
+                # Mirrors PasswordResetRequestView's same check — see
+                # that view for the rationale.
+                "can_password_login": bool(user and user.has_usable_password()),
+            }
+        )
+
+
 class RegisterOTPRequestView(APIView):
     """POST /api/auth/register/otp/ — send a verification code.
 

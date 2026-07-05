@@ -169,52 +169,110 @@ def notify_on_order_event(sender, instance, created, **kwargs):
                 meta={"total_amount": str(order.total_amount)},
             )
 
-    # -------------------- status transition (customer only) --------------------
+    # -------------------- status transition (customer + admin) -----------
     prev_status = _previous_status(order.pk)
     if prev_status is None or prev_status == order.status:
         return
 
-    # Skip transitions that the customer can't act on (internal warehouse
-    # bookkeeping). Only notify on customer-visible movements.
-    customer_facing_transitions = {
-        ("Confirmed", "Processing"),
-        ("Processing", "Shipped"),
-        ("Shipped", "Delivered"),
-        ("Delivered", "Received"),
-        ("Pending", "Cancelled"),
-        ("Confirmed", "Cancelled"),
-        ("Processing", "Cancelled"),
+    # Customer notification policy:
+    #
+    # The customer cares about *every* status change that affects their
+    # order, regardless of which intermediate step the admin skipped
+    # (e.g. an admin can confirm a COD order without going through
+    # "Processing", or mark a parcel delivered without an explicit
+    # "Shipped" step). The previous strict `(from, to)` allow-list
+    # silently dropped those transitions — that's why customers
+    # never saw a "Pending → Delivered" or "Confirmed → Shipped"
+    # notification.
+    #
+    # We now notify on *any* transition where the new status is a
+    # state the customer can act on (i.e. not internal admin
+    # bookkeeping). The set below is the canonical list of
+    # customer-facing target states.
+    customer_facing_target_statuses = {
+        "Confirmed",
+        "Processing",
+        "Shipped",
+        "Delivered",
+        "Received",
+        "Cancelled",
     }
-    if (prev_status, order.status) not in customer_facing_transitions:
-        return
 
-    notes = (getattr(order, "status_notes", "") or "").strip()
-    body = f"Your order status changed from {prev_status} to {order.status}."
-    if notes:
-        body = f"{body} {notes}"
+    is_customer_visible = order.status in customer_facing_target_statuses
 
-    _emit_customer(
-        order,
+    # Edge case: an admin might temporarily revert an order (e.g. a
+    # "Delivered" order gets bumped back to "Processing" because of a
+    # failed delivery attempt). The customer should still be told —
+    # the new status is in the allow-list above, so they'll get the
+    # normal status update. We pick the level based on direction:
+    # "Cancelled" is always a warning; everything else is info.
+    if is_customer_visible:
+        notes = (getattr(order, "status_notes", "") or "").strip()
+        # Friendly label for the body — drop the all-caps Status.choices
+        # form (e.g. "PROCESSING") in favour of a sentence-cased word.
+        to_label = order.status.capitalize()
+        from_label = prev_status.capitalize() if prev_status else ""
+        body = (
+            f"Your order status changed from {from_label} to {to_label}."
+            if from_label
+            else f"Your order status is now {to_label}."
+        )
+        if notes:
+            body = f"{body} {notes}"
+
+        level = "warning" if order.status == "Cancelled" else "info"
+        _emit_customer(
+            order,
+            kind="order_status",
+            level=level,
+            title=f"Order #{order.order_number} is now {to_label}",
+            body=body,
+            meta={"from_status": prev_status, "to_status": order.status},
+        )
+
+    # Admin notification policy:
+    #
+    # Admins get a *separate* notification for every status transition
+    # (including the internal ones) so the operator dashboard reflects
+    # the live workflow. Without this, an admin walking in to check
+    # "what's happening with order #X" only ever sees order_placed
+    # and order_paid rows — never the in-flight status updates.
+    admin_level = (
+        "warning" if order.status == "Cancelled" else "info"
+    )
+    _emit_admins(
         kind="order_status",
-        level="info",
-        title=f"Order #{order.order_number} is now {order.status}",
-        body=body,
+        level=admin_level,
+        title=(
+            f"Order #{order.order_number}: {prev_status} → {order.status}"
+        ),
+        body=(
+            f"{customer or 'The customer'}'s order #{order.order_number} "
+            f"moved from {prev_status} to {order.status}."
+        ),
+        order=order,
         meta={"from_status": prev_status, "to_status": order.status},
     )
 
-    # The (Delivered -> Received) transition is unique: it's driven by
-    # the customer themselves, so we also push an admin notification
-    # so the support / fulfillment team sees the buyer has confirmed
-    # the package arrived (closes out the delivery loop).
+    # The (Delivered → Received) transition is unique: it's driven by
+    # the customer themselves. The customer row above already says
+    # "thank you for confirming receipt", so we only need to push
+    # the admin notification so the support / fulfillment team sees
+    # the buyer has confirmed the package arrived (closes out the
+    # delivery loop). We use a distinct `order_received` kind so the
+    # admin bell can highlight it differently.
     if (prev_status, order.status) == ("Delivered", "Received"):
         _emit_admins(
-            kind="order_received",
-            level="success",
-            title=f"Order #{order.order_number} confirmed received by customer",
-            body=(
-                f"{customer or 'The customer'} confirmed receipt of "
-                f"#{order.order_number}. Order is now closed."
-            ),
-            order=order,
-            meta={"from_status": prev_status, "to_status": order.status},
-        )
+              kind="order_received",
+              level="success",
+              title=(
+                  f"Order #{order.order_number} confirmed received "
+                  f"by customer"
+              ),
+              body=(
+                  f"{customer or 'The customer'} confirmed receipt of "
+                  f"#{order.order_number}. Order is now closed."
+              ),
+              order=order,
+              meta={"from_status": prev_status, "to_status": order.status},
+          )

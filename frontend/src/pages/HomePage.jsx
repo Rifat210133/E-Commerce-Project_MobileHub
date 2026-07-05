@@ -10,11 +10,14 @@ export default function HomePage() {
   const [featured, setFeatured] = useState(null);
   const [brands, setBrands] = useState([]);
   const [picks, setPicks] = useState([]);
-  const [stats, setStats] = useState({ phones: 0, brands: 0, customers: 0 });
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadHome = () => {
     let alive = true;
+    setError(null);
+    setLoading(true);
     (async () => {
       try {
         const [f, b, p, s] = await Promise.all([
@@ -28,14 +31,50 @@ export default function HomePage() {
         setBrands(b.results || b);
         setPicks(Array.isArray(p) ? p : []);
         if (s) setStats(s);
+      } catch (err) {
+        if (!alive) return;
+        // Surface the failure so the user gets a banner instead of a silent
+        // blank page. Common cause: Vite auto-shifted to a port the Django
+        // CORS allowlist does not know about (e.g. 5174 while .env only has
+        // 5173) — adding the new origin to CORS_ALLOWED_ORIGINS and
+        // restarting the hub fixes it.
+        // eslint-disable-next-line no-console
+        console.error("[HomePage] load failed", err);
+        setError(err?.message || "Could not load home data.");
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, []);
+  };
+
+  useEffect(() => loadHome(), []);
 
   if (loading) return <Spinner />;
+
+  if (error) {
+    return (
+      <div className="px-margin-mobile py-12 max-w-xl mx-auto text-center">
+        <div className="bg-surface-white rounded-2xl border border-border-subtle p-8 shadow-sm">
+          <Icon name="cloud_off" className="text-5xl text-on-surface-variant" />
+          <h2 className="mt-4 font-headline-md text-headline-md text-on-surface">
+            Could not load the home feed
+          </h2>
+          <p className="mt-2 text-on-surface-variant font-body-md text-body-md">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={loadHome}
+            className="mt-6 inline-flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-label-md text-label-md active:scale-95 transition-transform"
+          >
+            <Icon name="refresh" />
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const trending = featured?.trending || [];
   const deals = featured?.best_deals || [];
@@ -72,11 +111,11 @@ export default function HomePage() {
               )}
             </div>
             <div className="flex items-center gap-6 mt-10">
-              <Stat label="Phones" value={formatCount(stats.phones, "+")} />
+              <Stat label="Phones" value={formatCount(stats?.phones, "+")} />
               <div className="w-px h-10 bg-white/20" />
-              <Stat label="Brands" value={formatCount(stats.brands)} />
+              <Stat label="Brands" value={formatCount(stats?.brands)} />
               <div className="w-px h-10 bg-white/20" />
-              <Stat label="Customers" value={formatCount(stats.customers, "+")} />
+              <Stat label="Customers" value={formatCount(stats?.customers, "+")} />
             </div>
           </div>
           <div className="relative">
@@ -343,10 +382,12 @@ function hashToColor(str) {
 }
 
 // Compact number formatter: 105 → "105+", 1234 → "1.2k+", 22000 → "22k+".
-// Falls back to "0" when value is missing/null so the strip never blanks out
-// if the stats endpoint is down.
+// Falls back to "—" when value is missing (e.g. stats endpoint not loaded yet
+// or offline) so the strip never blanks out or shows a misleading "0".
 function formatCount(n, suffix = "") {
-  const v = Number(n) || 0;
+  if (n === null || n === undefined) return "—";
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "—";
   if (v >= 1000) {
     const k = v / 1000;
     return `${(k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, ""))}k${suffix}`;

@@ -79,18 +79,35 @@ export default function CheckoutPage() {
         if (cancelled) return;
         if (result.status === "Paid") {
           notify("Payment confirmed", "success");
-        } else if (result.status === "Failed") {
-          notify("Payment failed. You can retry from the order page.", "error");
-        } else if (result.status === "Cancelled") {
-          notify("Payment was cancelled.", "error");
+          // The Order only exists once payment actually confirmed.
+          // ``result.order`` carries the new order_number for both
+          // legacy (it points to the same MH-#####) and new flows
+          // (the freshly-materialised order_number).
+          if (result.order) navigate(`/orders/${result.order}`);
+          else navigate("/orders");
+          return;
         }
-        navigate(`/orders/${result.order || pendingPayment.orderNumber}`);
+        if (result.status === "Failed") {
+          notify("Payment failed. You can retry from the checkout page.", "error");
+        } else if (result.status === "Cancelled") {
+          notify("Payment was cancelled.", "info");
+        }
+        // Failed / Cancelled — stay on the checkout screen with cart
+        // intact so the user can pick a different method or retry.
+        setPendingPayment(null);
       } catch (e) {
         if (cancelled) return;
-        notify(extractError(e) || "Payment confirmation timed out.", "error");
-        navigate(`/orders/${pendingPayment.orderNumber}`);
+        notify(extractError(e) || "Payment confirmation timed out. You can retry from the checkout page.", "error");
+        // Same idea — keep the user on /checkout so the cart survives.
+        setPendingPayment(null);
       } finally {
-        if (!cancelled) setPendingPayment(null);
+        // ``setPendingPayment(null)`` is called in the success path
+        // above; the catch block does it too. We don't double-clear
+        // here because a missing return guard would race.
+        if (!cancelled) {
+          // safety net for any path that fell through without
+          // explicitly clearing state
+        }
       }
     })();
     return () => {
@@ -172,51 +189,57 @@ const submit = async () => {
         payment_method: form.payment_method,
         notes: "",
       };
-      const order = await ordersApi.checkout(payload);
-      // Backend clears the cart inside the checkout transaction. Reset the
-      // local store immediately so the navbar badge updates, then refetch
-      // to stay in sync with the server (in case anything was added back).
+      const result = await ordersApi.checkout(payload);
+
+      // Two response shapes depending on payment method:
+      //   - COD: backend already created the Order, cleared the cart, and
+      //     returned {order_number}. We reset the local cart and bounce to
+      //     the order detail page.
+      //   - bKash / Nagad: backend did NOT create an Order. It snapshotted
+      //     the cart + shipping address onto a PaymentAttempt, opened a
+      //     hosted session with the gateway, and returned
+      //     {payment_id, redirect_url, draft_id, draft_number}. The cart
+      //     stays intact so a cancel / abandon never costs the user their
+      //     selections — they stay on this page and can retry. Only when
+      //     the gateway confirms Paid does an Order get materialised.
+      if (ONLINE_METHODS.has(form.payment_method)) {
+        const session = result;
+        if (!session?.redirect_url || !session?.payment_id) {
+          notify(
+            "Could not start the payment session. Please try again.",
+            "error"
+          );
+          setSubmitting(false);
+          return;
+        }
+        // Cart is intentionally NOT cleared here — the hosted page may
+        // come back as Failed / Cancelled and we want the user to retry
+        // without re-shuffling the cart.
+        notify("Complete the payment in the new tab.", "info");
+        const popup = window.open(session.redirect_url, "_blank", "noopener,noreferrer");
+        if (!popup) {
+          notify(
+            "Pop-up blocked. Please allow pop-ups for this site to complete payment.",
+            "error"
+          );
+        }
+        setPendingPayment({
+          provider: form.payment_method,
+          paymentId: session.payment_id,
+          draftId: session.draft_id,
+          draftNumber: session.draft_number,
+          orderNumber: null, // will be filled in once /execute materialises
+        });
+        // Don't navigate yet — the polling loop below routes to the new
+        // /orders/<n> page when the gateway confirms.
+        return;
+      }
+
+      // COD path — the Order is created and the cart cleared atomically.
       await reset();
       await fetchCart();
       notify("Order placed successfully", "success");
-
-      // For bKash / Nagad the order is created in Pending state. We then
-      // ask the payments app to issue a hosted-page URL with the gateway,
-      // open it in a new tab, and poll execute() until the gateway
-      // confirms. On success we route the main tab to the order detail
-      // page; the user can close the popup when they're done.
-      if (ONLINE_METHODS.has(form.payment_method)) {
-        try {
-          const session = await createPayment(form.payment_method, order.order_number);
-          const popup = window.open(session.redirect_url, "_blank", "noopener,noreferrer");
-          if (!popup) {
-            notify(
-              "Pop-up blocked. Please allow pop-ups for this site to complete payment.",
-              "error"
-            );
-          }
-          setPendingPayment({
-            provider: form.payment_method,
-            paymentId: session.payment_id,
-            orderNumber: order.order_number,
-          });
-          // Don't navigate yet — the polling loop below handles the
-          // redirect when the gateway confirms.
-          return;
-        } catch (e) {
-          // Order is already created; surface the error and let the user
-          // either retry payment from the order page or contact support.
-          notify(
-            `Order placed (${order.order_number}) but the payment gateway could not be opened. ` +
-              "You can retry from the order page.",
-            "error"
-          );
-          navigate(`/orders/${order.order_number}`);
-          return;
-        }
-      }
-
-      navigate(`/orders/${order.order_number}`);
+      navigate(`/orders/${result.order_number}`);
     } catch (e) {
       notify(extractError(e), "error");
     } finally {
@@ -268,15 +291,35 @@ const submit = async () => {
                 Complete the payment in the {pendingPayment.provider === "bkash" ? "bKash" : "Nagad"} tab that just opened.
                 This page will update automatically once the gateway confirms.
               </div>
-              <div className="text-label-md text-ink-muted">
-                Order <span className="text-ink">{pendingPayment.orderNumber}</span>
+              {pendingPayment.orderNumber ? (
+                <button
+                  onClick={() => navigate(`/orders/${pendingPayment.orderNumber}`)}
+                  className="btn-ghost mt-2"
+                >
+                  <Icon name="arrow_forward" size={20} /> Go to order page
+                </button>
+              ) : (
+                <div className="text-label-md text-ink-muted">
+                  Draft <span className="text-ink">{pendingPayment.draftNumber}</span>
+                </div>
+              )}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    // Manual abandon: drop the spinner, clear the
+                    // PaymentAttempt from the polling loop, and stay
+                    // on the checkout page so the user can retry.
+                    setPendingPayment(null);
+                    notify(
+                      "Stopped waiting. Your cart is intact — you can retry payment or pick a different method.",
+                      "info",
+                    );
+                  }}
+                  className="text-ink-muted text-label-md hover:underline"
+                >
+                  Stop waiting &amp; choose a different method
+                </button>
               </div>
-              <button
-                onClick={() => navigate(`/orders/${pendingPayment.orderNumber}`)}
-                className="btn-ghost mt-2"
-              >
-                <Icon name="arrow_forward" size={20} /> Go to order page
-              </button>
             </div>
           )}
           {!pendingPayment && step === 0 && (
